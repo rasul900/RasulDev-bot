@@ -11,8 +11,8 @@ export const startHandler = async (ctx) => {
         `🏠 *Asosiy Menyu*\n\n` +
         `👋 Xush kelibsiz, *${user.firstName}*!\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
-        `🌟 Siz bizning *maxsus a'zomiz*\n` +
-        `📬 Eng so'nggi kontentlar siz uchun tayyor!\n` +
+        `👇 Pastdagi menulardan ozingizga keraklisini tanlang:\n` +
+        `📬 Shu yerdan siz bizning kanalarimizdagi yangi postlar haqida habar olasiz!\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
         `📌 Quyidagi bo'limlardan birini tanlang:`,
         { parse_mode: "Markdown", ...mainMenu }
