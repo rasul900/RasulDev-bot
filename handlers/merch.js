@@ -1,0 +1,4 @@
+bot.command(
+  "adminpanel",
+  adminPanelHandler
+);
