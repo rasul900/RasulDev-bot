@@ -2,8 +2,6 @@ import { Markup } from "telegraf";
 
 export const merchMenu =
 Markup.keyboard([
-  ["👕 MERCH"],
-  ["⭐ Stars"],
-  ["👑 Premium"],
+  ["👕 MERCH","⭐ Stars","👑 Premium"],
   ["🔙 Orqaga"]
 ]).resize();
