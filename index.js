@@ -24,7 +24,7 @@ import { adminPanelHandler } from "./handlers/admin.js";
 
 import { merchMenu } from "./keyboards/MerchMenu.js";
 import { mainMenu } from "./keyboards/mainMenu.js";
-
+import { merchFutbolka } from "./handlers/futbolka.js";
 import { checkSubscription } from "./middlewares/checkSubscription.js";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -60,6 +60,10 @@ bot.hears("👔 Do'kon", async (ctx) => {
     merchMenu
   );
 });
+
+bot.hears("👕 MERCH", merchFutbolka )
+bot.hears("⭐ Stars", StarsShop)
+bot.hears("👑 Premium", PremiumShop)
 
 // ORQAGA
 bot.hears("🔙 Orqaga", async (ctx) => {
