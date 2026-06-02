@@ -1,8 +1,10 @@
+import { adminMenu } from "../keyboards/adminMenu.js";
+
+const ADMIN_ID = 20111986;
+
 export const adminPanelHandler = async (ctx) => {
 
-  const adminId = Number(process.env.ADMIN_ID);
-
-  if (ctx.from.id !== adminId) {
+  if (ctx.from.id !== ADMIN_ID) {
     return ctx.reply("⛔ Siz admin emassiz");
   }
 
@@ -10,4 +12,5 @@ export const adminPanelHandler = async (ctx) => {
     "⚙️ Admin Panel",
     adminMenu
   );
+
 };
