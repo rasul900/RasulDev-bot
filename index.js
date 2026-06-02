@@ -6,6 +6,7 @@ import { startHandler, registerHandler, contactHandler } from "./handlers/start.
 import { profileHandler } from "./handlers/profile.js";
 import { aboutHandler } from "./handlers/about.js";
 import { partnershipHandler, partnershipCallbackHandler, partnershipBackHandler } from "./handlers/partnership.js";
+import { merchMenu } from "./keyboards/MerchMenu.js";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 connectDB();
@@ -16,7 +17,7 @@ bot.on("contact", contactHandler);
 bot.hears("📊 Profilim", profileHandler);
 bot.hears("ℹ️ Bot haqida", aboutHandler);
 bot.hears("🤝 Hamkorlik", partnershipHandler);
-bot.hears("👔 Do'kon", (ctx) => ctx.reply({...MerchMenu}));
+bot.hears("👔 Do'kon", merchMenu );
 bot.hears("🔙 Orqaga", (ctx) => ctx.reply("🔙 Asosiy menyuga qaytish uchun pastdagi tugmalardan foydalaning.", { ...mainMenu }));
 
 bot.action(/^partner_(?!back)/, partnershipCallbackHandler);
