@@ -26,6 +26,8 @@ import { merchMenu } from "./keyboards/MerchMenu.js";
 import { mainMenu } from "./keyboards/mainMenu.js";
 import { merchFutbolka } from "./handlers/futbolka.js";
 import { checkSubscription } from "./middlewares/checkSubscription.js";
+import { StarsShop } from "./handlers/Stars.js";
+import { PremiumShop } from "./handlers/Premiumm.js";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
