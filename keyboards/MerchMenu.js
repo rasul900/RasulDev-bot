@@ -1,6 +1,6 @@
 import { Markup } from "telegraf";
 
-export const MerchMenu =
+export const merchMenu =
 Markup.keyboard([
   ["👕 MERCH"],
   ["⭐ Stars"],
