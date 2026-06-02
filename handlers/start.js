@@ -11,7 +11,7 @@ export const startHandler = async (ctx) => {
         `🏠 *Asosiy Menyu*\n\n` +
         `👋 Xush kelibsiz, *${user.firstName}*!\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
-        `👇 Pastdagi menulardan ozingizga keraklisini tanlang:\n` +
+        `👇 Pastdagi menulardan ozingizga keraklisini tanlang\n` +
         `📬 Shu yerdan siz bizning kanalarimizdagi yangi postlar haqida habar olasiz!\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
         `📌 Quyidagi bo'limlardan birini tanlang:`,
