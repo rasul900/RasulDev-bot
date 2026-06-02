@@ -16,6 +16,8 @@ bot.on("contact", contactHandler);
 bot.hears("📊 Profilim", profileHandler);
 bot.hears("ℹ️ Bot haqida", aboutHandler);
 bot.hears("🤝 Hamkorlik", partnershipHandler);
+bot.hears("👔 Do'kon", (ctx) => ctx.reply("🛍️ Do'kon bo'limi tez orada ochiladi!"));
+bot.hears("🔙 Orqaga", (ctx) => ctx.reply("🔙 Asosiy menyuga qaytish uchun pastdagi tugmalardan foydalaning.", { ...mainMenu }));
 
 bot.action(/^partner_(?!back)/, partnershipCallbackHandler);
 bot.action("partner_back", partnershipBackHandler);
