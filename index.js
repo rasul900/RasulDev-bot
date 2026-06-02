@@ -8,7 +8,7 @@ import { aboutHandler } from "./handlers/about.js";
 import { partnershipHandler, partnershipCallbackHandler, partnershipBackHandler } from "./handlers/partnership.js";
 import { merchMenu } from "./keyboards/MerchMenu.js";
 import { adminPanelHandler } from "./handlers/admin.js";
-
+import { checkSubscription } from "./middlewares/checkSubscription.js";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 connectDB();
