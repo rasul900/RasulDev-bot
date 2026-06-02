@@ -17,7 +17,7 @@ bot.on("contact", contactHandler);
 bot.hears("📊 Profilim", profileHandler);
 bot.hears("ℹ️ Bot haqida", aboutHandler);
 bot.hears("🤝 Hamkorlik", partnershipHandler);
-bot.hears("👔 Do'kon", merchMenu );
+bot.hears("👔 Do'kon", (ctx) => ctx.reply("🛍 Do'kon bo'limiga xush kelibsiz!", { ...merchMenu }));
 bot.hears("🔙 Orqaga", (ctx) => ctx.reply("🔙 Asosiy menyuga qaytish uchun pastdagi tugmalardan foydalaning.", { ...mainMenu }));
 
 bot.action(/^partner_(?!back)/, partnershipCallbackHandler);
