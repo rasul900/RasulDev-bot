@@ -108,3 +108,8 @@ process.once("SIGINT", () =>
 process.once("SIGTERM", () =>
   bot.stop("SIGTERM")
 );
+
+bot.command("adminpanel", async (ctx) => {
+  console.log("ADMIN COMMAND ISHLADI");
+  await ctx.reply("Admin command ishladi");
+});
