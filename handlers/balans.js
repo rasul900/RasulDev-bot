@@ -1,5 +1,6 @@
 import { Markup } from "telegraf";
 import User from "../models/User.js"; // o'z modelingizga moslashtiring
+import { mainMenu } from "../keyboards/mainMenu.js";
 
 const REFERRAL_BONUS = 5000; // har bir do'st uchun bonus (so'm)
 
