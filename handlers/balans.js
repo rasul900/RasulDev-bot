@@ -1,0 +1,327 @@
+import { Markup } from "telegraf";
+import User from "../models/User.js"; // o'z modelingizga moslashtiring
+
+const REFERRAL_BONUS = 5000; // har bir do'st uchun bonus (so'm)
+
+// ── Balans menyusi ────────────────────────────────────────────
+export const balansHandler = async (ctx) => {
+  const user = await User.findOne({ telegramId: ctx.from.id });
+
+  await ctx.reply(
+    `💼 *Balans bo'limi*\n\n` +
+    `💰 Joriy balans: *${(user?.balance || 0).toLocaleString()} so'm*\n\n` +
+    `Kerakli bo'limni tanlang:`,
+    {
+      parse_mode: "Markdown",
+      ...Markup.keyboard([
+        ["💸 Pul Ishlash", "💰 Balansni to'ldirish"],
+        ["⬅️ Orqaga"],
+      ]).resize(),
+    }
+  );
+};
+
+// ── Pul ishlash — referal ─────────────────────────────────────
+export const pulIshlashHandler = async (ctx) => {
+  const user     = await User.findOne({ telegramId: ctx.from.id });
+  const botInfo  = await ctx.telegram.getMe();
+  const refLink  = `https://t.me/${botInfo.username}?start=ref_${ctx.from.id}`;
+  const refCount = user?.referrals?.length || 0;
+  const earned   = refCount * REFERRAL_BONUS;
+
+  await ctx.reply(
+    `💸 *Referal dasturi*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `👥 Taklif qilgan do'stlar: *${refCount} ta*\n` +
+    `💵 Referal orqali ishlagan: *${earned.toLocaleString()} so'm*\n` +
+    `🎁 Har bir do'st uchun: *${REFERRAL_BONUS.toLocaleString()} so'm*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📤 Havolangizni do'stlaringizga yuboring:\n\n` +
+    `\`${refLink}\`\n\n` +
+    `_Do'stingiz botga kirishi bilan balansga avtomatik qo'shiladi!_`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "📤 Do'stga yuborish", url: `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent("🎮 Bu botga qo'shil, birgalikda ishlaylik!")}` }],
+          [{ text: "🔄 Statistikani yangilash", callback_data: "ref_stats" }],
+        ],
+      },
+    }
+  );
+};
+
+// ── Referal statistika yangilash ──────────────────────────────
+export const refStatsCallback = async (ctx) => {
+  const user     = await User.findOne({ telegramId: ctx.from.id });
+  const botInfo  = await ctx.telegram.getMe();
+  const refLink  = `https://t.me/${botInfo.username}?start=ref_${ctx.from.id}`;
+  const refCount = user?.referrals?.length || 0;
+  const earned   = refCount * REFERRAL_BONUS;
+
+  await ctx.editMessageText(
+    `💸 *Referal dasturi*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `👥 Taklif qilgan do'stlar: *${refCount} ta*\n` +
+    `💵 Referal orqali ishlagan: *${earned.toLocaleString()} so'm*\n` +
+    `🎁 Har bir do'st uchun: *${REFERRAL_BONUS.toLocaleString()} so'm*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📤 Havolangiz:\n\n` +
+    `\`${refLink}\``,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "📤 Do'stga yuborish", url: `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent("🎮 Bu botga qo'shil!")}` }],
+          [{ text: "🔄 Yangilash", callback_data: "ref_stats" }],
+        ],
+      },
+    }
+  );
+  await ctx.answerCbQuery("✅ Yangilandi");
+};
+
+// ── Balansni to'ldirish — usul tanlash ───────────────────────
+export const topUpHandler = async (ctx) => {
+  await ctx.reply(
+    `💰 *Balansni to'ldirish*\n\n` +
+    `To'lov usulini tanlang:`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "💳 Click / Payme orqali", callback_data: "topup_card" }],
+          [{ text: "👨‍💼 Admin orqali (chek)",   callback_data: "topup_admin" }],
+        ],
+      },
+    }
+  );
+};
+
+// ── Click / Payme ─────────────────────────────────────────────
+export const topUpCardCallback = async (ctx) => {
+  ctx.session ??= {};
+  ctx.session.awaitingTopUpAmount = true;
+  ctx.session.topUpMethod         = "card";
+
+  await ctx.editMessageText(
+    `💳 *Click / Payme orqali to'ldirish*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `📌 Minimal: *10,000 so'm*\n` +
+    `📌 Maksimal: *5,000,000 so'm*\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `💬 Qancha so'm to'ldirmoqchisiz?\n` +
+    `_Faqat raqam kiriting (masalan: 50000)_`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "50,000",   callback_data: "amount_50000" },
+            { text: "100,000",  callback_data: "amount_100000" },
+          ],
+          [
+            { text: "250,000",  callback_data: "amount_250000" },
+            { text: "500,000",  callback_data: "amount_500000" },
+          ],
+          [{ text: "❌ Bekor qilish", callback_data: "topup_cancel" }],
+        ],
+      },
+    }
+  );
+  await ctx.answerCbQuery();
+};
+
+// ── Tez miqdor tugmalari ──────────────────────────────────────
+export const quickAmountCallback = async (ctx) => {
+  const amount = parseInt(ctx.callbackQuery.data.split("_")[1]);
+
+  ctx.session ??= {};
+  ctx.session.topUpAmount         = amount;
+  ctx.session.awaitingTopUpAmount = false;
+
+  await sendPaymentDetails(ctx, amount);
+  await ctx.answerCbQuery();
+};
+
+// ── Miqdor kiritilganda ───────────────────────────────────────
+export const handleTopUpAmountInput = async (ctx) => {
+  if (!ctx.session?.awaitingTopUpAmount) return;
+
+  const amount = parseInt(ctx.message.text.trim().replace(/\s/g, ""));
+
+  if (isNaN(amount) || amount < 10000) {
+    return ctx.reply("⚠️ Minimal miqdor 10,000 so'm. Qaytadan kiriting:");
+  }
+  if (amount > 5000000) {
+    return ctx.reply("⚠️ Maksimal miqdor 5,000,000 so'm. Qaytadan kiriting:");
+  }
+
+  ctx.session.topUpAmount         = amount;
+  ctx.session.awaitingTopUpAmount = false;
+
+  await sendPaymentDetails(ctx, amount);
+};
+
+// ── To'lov rekvizitlari yuborish ──────────────────────────────
+const sendPaymentDetails = async (ctx, amount) => {
+  const orderId = `PAY-${ctx.from.id}-${Date.now()}`;
+
+  ctx.session ??= {};
+  ctx.session.orderId = orderId;
+
+  await ctx.reply(
+    `💳 *To'lov tafsiloti*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `💰 Miqdor: *${amount.toLocaleString()} so'm*\n` +
+    `🔖 Buyurtma ID: \`${orderId}\`\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `💳 *Click:* \`9860 1234 5678 9012\`\n` +
+    `💳 *Payme:* \`8600 1234 5678 9012\`\n\n` +
+    `👤 Karta egasi: *Ism Familiya*\n\n` +
+    `⚠️ _To'lovdan so'ng chek rasmini yuboring!_`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "📸 Chek yuborish", callback_data: "send_check" }],
+          [{ text: "❌ Bekor qilish",  callback_data: "topup_cancel" }],
+        ],
+      },
+    }
+  );
+};
+
+// ── Chek yuborish (card) ──────────────────────────────────────
+export const sendCheckCallback = async (ctx) => {
+  ctx.session ??= {};
+  ctx.session.awaitingCheck = true;
+
+  await ctx.editMessageText(
+    `📸 *Chek rasmini yuboring*\n\n` +
+    `_To'lov chekining rasmini yoki skrinini yuboring._`,
+    { parse_mode: "Markdown" }
+  );
+  await ctx.answerCbQuery();
+};
+
+// ── Chek rasmi kelganda ───────────────────────────────────────
+export const handleCheckPhoto = async (ctx) => {
+  if (!ctx.session?.awaitingCheck) return;
+
+  const { topUpAmount: amount, orderId } = ctx.session;
+  const ADMIN_ID = process.env.ADMIN_ID; // .env da saqlang
+
+  ctx.session.awaitingCheck = false;
+
+  // Adminga xabar
+  await ctx.telegram.sendPhoto(
+    ADMIN_ID,
+    ctx.message.photo.at(-1).file_id,
+    {
+      caption:
+        `💰 *Yangi to'ldirish so'rovi*\n\n` +
+        `👤 Foydalanuvchi: @${ctx.from.username || "yo'q"}\n` +
+        `🆔 ID: \`${ctx.from.id}\`\n` +
+        `💵 Miqdor: *${amount?.toLocaleString()} so'm*\n` +
+        `🔖 Buyurtma: \`${orderId}\``,
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ Tasdiqlash", callback_data: `approve_${ctx.from.id}_${amount}` },
+            { text: "❌ Rad etish",  callback_data: `reject_${ctx.from.id}` },
+          ],
+        ],
+      },
+    }
+  );
+
+  await ctx.reply(
+    `✅ *Chek yuborildi!*\n\n` +
+    `Admin tekshirib, balansni tez orada to'ldiradi.\n` +
+    `⏳ Odatda 5-15 daqiqa ichida.`,
+    { parse_mode: "Markdown" }
+  );
+
+  ctx.session = {};
+};
+
+// ── Admin orqali to'ldirish ───────────────────────────────────
+export const topUpAdminCallback = async (ctx) => {
+  ctx.session ??= {};
+  ctx.session.awaitingAdminCheck = true;
+
+  await ctx.editMessageText(
+    `👨‍💼 *Admin orqali to'ldirish*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `1️⃣ Admin bilan bog'laning: @admin_username\n` +
+    `2️⃣ To'lov miqdorini ayting\n` +
+    `3️⃣ To'lovni amalga oshiring\n` +
+    `4️⃣ Chekni shu yerga yuboring\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📸 *Chek rasmini yuboring:*`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "💬 Admin bilan bog'lanish", url: "https://t.me/admin_username" }],
+          [{ text: "❌ Bekor qilish", callback_data: "topup_cancel" }],
+        ],
+      },
+    }
+  );
+  await ctx.answerCbQuery();
+};
+
+// ── Admin chekni tasdiqlash ───────────────────────────────────
+export const handleAdminApprove = async (ctx) => {
+  const [, userId, amount] = ctx.callbackQuery.data.split("_");
+
+  await User.findOneAndUpdate(
+    { telegramId: parseInt(userId) },
+    { $inc: { balance: parseInt(amount) } }
+  );
+
+  await ctx.telegram.sendMessage(
+    userId,
+    `✅ *Balansingiz to'ldirildi!*\n\n` +
+    `💰 +${parseInt(amount).toLocaleString()} so'm qo'shildi.\n` +
+    `Xaridingiz uchun rahmat! 🎉`,
+    { parse_mode: "Markdown" }
+  );
+
+  await ctx.editMessageCaption(
+    `✅ *Tasdiqlandi* — ${parseInt(amount).toLocaleString()} so'm\n👤 User ID: ${userId}`,
+    { parse_mode: "Markdown" }
+  );
+  await ctx.answerCbQuery("✅ Balans to'ldirildi");
+};
+
+// ── Admin chekni rad etish ────────────────────────────────────
+export const handleAdminReject = async (ctx) => {
+  const userId = ctx.callbackQuery.data.split("_")[1];
+
+  await ctx.telegram.sendMessage(
+    userId,
+    `❌ *To'ldirish rad etildi.*\n\n` +
+    `Chek tasdiqlanmadi. Muammo bo'lsa adminga murojaat qiling: @admin_username`,
+    { parse_mode: "Markdown" }
+  );
+
+  await ctx.editMessageCaption(
+    `❌ *Rad etildi* — User ID: ${userId}`,
+    { parse_mode: "Markdown" }
+  );
+  await ctx.answerCbQuery("❌ Rad etildi");
+};
+
+// ── Bekor qilish ──────────────────────────────────────────────
+export const topUpCancelCallback = async (ctx) => {
+  ctx.session = {};
+  await ctx.editMessageText(
+    `❌ *Bekor qilindi.*\n\nBalans bo'limiga qaytdingiz.`,
+    { parse_mode: "Markdown" }
+  );
+  await ctx.answerCbQuery("Bekor qilindi");
+};

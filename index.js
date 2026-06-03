@@ -48,13 +48,21 @@ import {
   handlePremiumBack,
 } from "./handlers/Premiumm.js";
 
+import {
+  ucHandler,
+  handleUcPackage,
+  handlePubgIdInput,
+  handleUcConfirm,
+  handleUcCancel,
+} from "./handlers/shop/uc.js";
+
 // ─────────────────────────────────────────────
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // MongoDB ulash
 connectDB();
 
-// Session middleware (Stars va Premium uchun zarur)
+// Session middleware (Stars, Premium va UC uchun zarur)
 bot.use(session());
 
 // Majburiy obuna middleware
@@ -74,6 +82,9 @@ bot.on("contact", contactHandler);
 bot.hears("📊 Profilim",    profileHandler);
 bot.hears("ℹ️ Bot haqida", aboutHandler);
 bot.hears("🤝 Hamkorlik",  partnershipHandler);
+bot.hears("💼 Balans",              balansHandler);
+bot.hears("💸 Pul Ishlash",         pulIshlashHandler);
+bot.hears("💰 Balansni to'ldirish", topUpHandler);
 
 // ── DO'KON ────────────────────────────────────
 bot.hears("👔 Do'kon", async (ctx) => {
@@ -83,6 +94,7 @@ bot.hears("👔 Do'kon", async (ctx) => {
 bot.hears("👕 MERCH",   merchFutbolka);
 bot.hears("⭐ Stars",   StarsShop);
 bot.hears("👑 Premium", PremiumShop);
+bot.hears("🎮 PUBG UC", ucHandler);
 
 // ── ORQAGA ────────────────────────────────────
 bot.hears("🔙 Orqaga", async (ctx) => {
@@ -107,6 +119,31 @@ bot.action(/^pother_\d+$/,      handlePremiumForOther);
 bot.action("confirm_premium",   handleConfirmPremium);
 bot.action("premium_shop",      handlePremiumBack);
 
+// ── UC (PUBG) CALLBACKLARI ────────────────────
+bot.action(/^uc_(60|325|660|1800|3850|8100)$/, handleUcPackage);
+bot.action("uc_confirm", handleUcConfirm);
+bot.action("uc_cancel",  handleUcCancel);
+
+bot.action("ref_stats",             refStatsCallback);
+bot.action("topup_card",            topUpCardCallback);
+bot.action("topup_admin",           topUpAdminCallback);
+bot.action(/^amount_\d+$/,          quickAmountCallback);
+bot.action("send_check",            sendCheckCallback);
+bot.action("topup_cancel",          topUpCancelCallback);
+bot.action(/^approve_\d+_\d+$/,     handleAdminApprove);
+bot.action(/^reject_\d+$/,          handleAdminReject);
+
+// bot.on("text") ichiga:
+if (ctx.session?.awaitingTopUpAmount) return handleTopUpAmountInput(ctx);
+
+// Rasm kelganda:
+bot.on("photo", async (ctx) => {
+  if (ctx.session?.awaitingCheck || ctx.session?.awaitingAdminCheck) {
+    return handleCheckPhoto(ctx);
+  }
+});
+
+
 // ── MATN KIRITISH ─────────────────────────────
 bot.on("text", async (ctx, next) => {
   // 1) Stars uchun username/ID kutilayotgan bo'lsa
@@ -119,11 +156,25 @@ bot.on("text", async (ctx, next) => {
     return handlePremiumUserIdInput(ctx);
   }
 
-  // 3) Faqat raqam kiritilsa — custom stars miqdori
+  // 3) PUBG ID kutilayotgan bo'lsa
+  if (ctx.session?.awaitingPubgId) {
+    return handlePubgIdInput(ctx);
+  }
+
+  // 4) Faqat raqam kiritilsa — custom stars miqdori
   if (/^\d+$/.test(ctx.message?.text?.trim())) {
     return handleCustomAmount(ctx);
   }
 
+  return next();
+});
+
+bot.on("text", async (ctx, next) => {
+  if (ctx.session?.awaitingUserId)        return handleUserIdInput(ctx);
+  if (ctx.session?.awaitingPremiumUserId) return handlePremiumUserIdInput(ctx);
+  if (ctx.session?.awaitingPubgId)        return handlePubgIdInput(ctx);
+  if (ctx.session?.awaitingTopUpAmount)   return handleTopUpAmountInput(ctx);
+  if (/^\d+$/.test(ctx.message?.text?.trim())) return handleCustomAmount(ctx);
   return next();
 });
 

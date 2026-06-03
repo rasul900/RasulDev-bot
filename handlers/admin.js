@@ -1,6 +1,6 @@
 import { adminMenu } from "../keyboards/adminMenu.js";
 
-const ADMIN_ID = 20111986;
+const ADMIN_ID = 6159831935;
 
 export const adminPanelHandler = async (ctx) => {
 
