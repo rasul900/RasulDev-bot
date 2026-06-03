@@ -134,7 +134,7 @@ bot.action(/^approve_\d+_\d+$/,     handleAdminApprove);
 bot.action(/^reject_\d+$/,          handleAdminReject);
 
 // bot.on("text") ichiga:
-if (ctx.session?.awaitingTopUpAmount) return handleTopUpAmountInput(ctx);
+
 
 // Rasm kelganda:
 bot.on("photo", async (ctx) => {
@@ -170,6 +170,7 @@ bot.on("text", async (ctx, next) => {
 });
 
 bot.on("text", async (ctx, next) => {
+  if (ctx.session?.awaitingTopUpAmount) return handleTopUpAmountInput(ctx);
   if (ctx.session?.awaitingUserId)        return handleUserIdInput(ctx);
   if (ctx.session?.awaitingPremiumUserId) return handlePremiumUserIdInput(ctx);
   if (ctx.session?.awaitingPubgId)        return handlePubgIdInput(ctx);
