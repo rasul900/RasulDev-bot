@@ -22,6 +22,22 @@ import {
 
 import { adminPanelHandler }  from "./handlers/admin.js";
 
+import {
+  balansHandler,
+  pulIshlashHandler,
+  topUpHandler,
+  refStatsCallback,
+  topUpCardCallback,
+  topUpAdminCallback,
+  quickAmountCallback,
+  sendCheckCallback,
+  topUpCancelCallback,
+  handleTopUpAmountInput,
+  handleCheckPhoto,
+  handleAdminApprove,
+  handleAdminReject,
+} from "./handlers/balans.js";
+
 import { merchMenu }          from "./keyboards/MerchMenu.js";
 import { mainMenu }           from "./keyboards/mainMenu.js";
 import { merchFutbolka }      from "./handlers/futbolka.js";
