@@ -98,7 +98,7 @@ bot.on("contact", contactHandler);
 bot.hears("📊 Profilim",    profileHandler);
 bot.hears("ℹ️ Bot haqida", aboutHandler);
 bot.hears("🤝 Hamkorlik",  partnershipHandler);
-bot.hears("💼 Balans",              balansHandler);
+bot.hears("💲 Balans",  balansHandler);
 bot.hears("💸 Pul Ishlash",         pulIshlashHandler);
 bot.hears("💰 Balansni to'ldirish", topUpHandler);
 
