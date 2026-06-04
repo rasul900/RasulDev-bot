@@ -326,3 +326,7 @@ export const topUpCancelCallback = async (ctx) => {
   );
   await ctx.answerCbQuery("Bekor qilindi");
 };
+
+bot.hears("🔙 Orqaga", async (ctx) => {
+  await ctx.reply("🏠 Asosiy menu", mainMenu);
+});
