@@ -7,16 +7,16 @@ export const startHandler = async (ctx) => {
     const user = await User.findOne({ telegramId: ctx.from.id });
 
     if (user) {
-     await ctx.reply(
-  `🏠 <b>Asosiy Menyu</b>\n\n` +
-  `👋 Xush kelibsiz, <b>${user.firstName}</b>!\n\n` +
-  `━━━━━━━━━━━━━━━━━━━\n` +
-  `<tg-emoji emoji-id="5368324170671202286">⭐</tg-emoji> Premium a'zo\n` +
-  `<tg-emoji emoji-id="5368324170671202295">🔥</tg-emoji> Yangi kontentlar\n` +
-  `━━━━━━━━━━━━━━━━━━━\n\n` +
-  `📌 Quyidagi bo'limlardan birini tanlang:`,
-  { parse_mode: "HTML", ...mainMenu }
-);
+      await ctx.reply(
+        `🏠 *Asosiy Menyu*\n\n` +
+        `👋 Xush kelibsiz, *${user.firstName}*!\n\n` +
+        `━━━━━━━━━━━━━━━━━━━\n` +
+        `👇 Pastdagi menulardan ozingizga keraklisini tanlang\n` +
+        `📬 Shu yerdan siz bizning kanalarimizdagi yangi postlar haqida habar olasiz!\n` +
+        `━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📌 Quyidagi bo'limlardan birini tanlang:`,
+        { parse_mode: "Markdown", ...mainMenu }
+      );
     } else {
       await ctx.reply(
         `✨ *Assalomu alaykum!*\n\n` +
