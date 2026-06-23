@@ -117,6 +117,9 @@ bot.hears("🔙 Orqaga", async (ctx) => {
   await ctx.reply("🏠 Asosiy menu", mainMenu);
 });
 
+bot.hears("🔙 Orqaga", async (ctx) => {
+  await ctx.reply("🏠 Asosiy menu", mainMenu);
+});
 // ── HAMKORLIK CALLBACKLARI ────────────────────
 bot.action(/^partner_(?!back)/, partnershipCallbackHandler);
 bot.action("partner_back",      partnershipBackHandler);
