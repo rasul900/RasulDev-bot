@@ -19,6 +19,8 @@ export const profileHandler = async (ctx) => {
       `📱 Username: @${user.username}\n` +
       `📞 Telefon: \`${user.phone}\`\n` +
       `🆔 Telegram ID: \`${user.telegramId}\`\n` +
+      `💰 Balans: *${(user.balance || 0).toLocaleString()} so'm*\n` +
+      `👥 Referallar: *${user.referrals?.length || 0} ta*\n` +
       `📅 Ro'yxatdan o'tgan sana: *${date}*`,
       { parse_mode: "Markdown", ...mainMenu }
     );

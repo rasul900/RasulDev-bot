@@ -2,8 +2,39 @@ import User from "../models/User.js";
 import { startKeyboard, phoneKeyboard } from "../keyboards/main.js";
 import { mainMenu } from "../keyboards/mainMenu.js";
 
+const REFERRAL_BONUS = 5000;
+
+const parseReferrerId = (ctx) => {
+  const payload = ctx.startPayload || ctx.message?.text?.split(" ")[1] || "";
+  if (!payload.startsWith("ref_")) return null;
+  const id = parseInt(payload.replace("ref_", ""), 10);
+  return isNaN(id) ? null : id;
+};
+
+const applyReferral = async (newUserId, referrerId) => {
+  if (!referrerId || referrerId === newUserId) return;
+
+  const referrer = await User.findOne({ telegramId: referrerId });
+  if (!referrer || referrer.referrals.includes(newUserId)) return;
+
+  referrer.referrals.push(newUserId);
+  referrer.balance += REFERRAL_BONUS;
+  await referrer.save();
+
+  await User.findOneAndUpdate(
+    { telegramId: newUserId },
+    { referredBy: referrerId }
+  );
+};
+
 export const startHandler = async (ctx) => {
   try {
+    const referrerId = parseReferrerId(ctx);
+    if (referrerId) {
+      ctx.session ??= {};
+      ctx.session.referredBy = referrerId;
+    }
+
     const user = await User.findOne({ telegramId: ctx.from.id });
 
     if (user) {
@@ -93,6 +124,12 @@ export const contactHandler = async (ctx) => {
         phone: ctx.message.contact.phone_number,
       });
       await user.save();
+
+      const referrerId = ctx.session?.referredBy;
+      if (referrerId) {
+        await applyReferral(ctx.from.id, referrerId);
+        ctx.session.referredBy = null;
+      }
 
       await ctx.reply(
         `🎊 *Tabriklaymiz, ${user.firstName}!*\n\n` +

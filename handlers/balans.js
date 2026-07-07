@@ -1,4 +1,5 @@
 import { Markup } from "telegraf";
+import { ADMINS } from "../config/admin.js";
 import User from "../models/User.js"; // o'z modelingizga moslashtiring
 import { mainMenu } from "../keyboards/mainMenu.js";
 
@@ -208,14 +209,22 @@ export const sendCheckCallback = async (ctx) => {
 
 // ── Chek rasmi kelganda ───────────────────────────────────────
 export const handleCheckPhoto = async (ctx) => {
-  if (!ctx.session?.awaitingCheck) return;
+  const isCardCheck  = ctx.session?.awaitingCheck;
+  const isAdminCheck = ctx.session?.awaitingAdminCheck;
+  if (!isCardCheck && !isAdminCheck) return;
 
-  const { topUpAmount: amount, orderId } = ctx.session;
-  const ADMIN_ID = process.env.ADMIN_ID; // .env da saqlang
+  const amount  = ctx.session?.topUpAmount;
+  const orderId = ctx.session?.orderId || `ADMIN-${ctx.from.id}-${Date.now()}`;
+  const ADMIN_ID = process.env.ADMIN_ID;
+  const amountText = amount ? `${amount.toLocaleString()} so'm` : "Aniqlanmagan (admin tekshiradi)";
 
-  ctx.session.awaitingCheck = false;
+  ctx.session.awaitingCheck      = false;
+  ctx.session.awaitingAdminCheck = false;
 
-  // Adminga xabar
+  const approveButton = amount
+    ? { text: "✅ Tasdiqlash", callback_data: `approve_${ctx.from.id}_${amount}` }
+    : { text: "✅ Tasdiqlash (0)", callback_data: `approve_${ctx.from.id}_0` };
+
   await ctx.telegram.sendPhoto(
     ADMIN_ID,
     ctx.message.photo.at(-1).file_id,
@@ -224,15 +233,12 @@ export const handleCheckPhoto = async (ctx) => {
         `💰 *Yangi to'ldirish so'rovi*\n\n` +
         `👤 Foydalanuvchi: @${ctx.from.username || "yo'q"}\n` +
         `🆔 ID: \`${ctx.from.id}\`\n` +
-        `💵 Miqdor: *${amount?.toLocaleString()} so'm*\n` +
+        `💵 Miqdor: *${amountText}*\n` +
         `🔖 Buyurtma: \`${orderId}\``,
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [
-            { text: "✅ Tasdiqlash", callback_data: `approve_${ctx.from.id}_${amount}` },
-            { text: "❌ Rad etish",  callback_data: `reject_${ctx.from.id}` },
-          ],
+          [approveButton, { text: "❌ Rad etish", callback_data: `reject_${ctx.from.id}` }],
         ],
       },
     }
@@ -256,7 +262,7 @@ export const topUpAdminCallback = async (ctx) => {
   await ctx.editMessageText(
     `👨‍💼 *Admin orqali to'ldirish*\n\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
-    `1️⃣ Admin bilan bog'laning: @admin_username\n` +
+    `1️⃣ Admin bilan bog'laning: @${process.env.BOT_USERNAME || "Rasul_dev_admin"}\n` +
     `2️⃣ To'lov miqdorini ayting\n` +
     `3️⃣ To'lovni amalga oshiring\n` +
     `4️⃣ Chekni shu yerga yuboring\n` +
@@ -266,7 +272,7 @@ export const topUpAdminCallback = async (ctx) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "💬 Admin bilan bog'lanish", url: "https://t.me/admin_username" }],
+          [{ text: "💬 Admin bilan bog'lanish", url: `https://t.me/${process.env.BOT_USERNAME || "Rasul_dev_admin"}` }],
           [{ text: "❌ Bekor qilish", callback_data: "topup_cancel" }],
         ],
       },
@@ -277,6 +283,10 @@ export const topUpAdminCallback = async (ctx) => {
 
 // ── Admin chekni tasdiqlash ───────────────────────────────────
 export const handleAdminApprove = async (ctx) => {
+  if (!ADMINS.includes(ctx.from.id)) {
+    return ctx.answerCbQuery("⛔ Ruxsat yo'q", { show_alert: true });
+  }
+
   const [, userId, amount] = ctx.callbackQuery.data.split("_");
 
   await User.findOneAndUpdate(
@@ -301,12 +311,16 @@ export const handleAdminApprove = async (ctx) => {
 
 // ── Admin chekni rad etish ────────────────────────────────────
 export const handleAdminReject = async (ctx) => {
+  if (!ADMINS.includes(ctx.from.id)) {
+    return ctx.answerCbQuery("⛔ Ruxsat yo'q", { show_alert: true });
+  }
+
   const userId = ctx.callbackQuery.data.split("_")[1];
 
   await ctx.telegram.sendMessage(
     userId,
     `❌ *To'ldirish rad etildi.*\n\n` +
-    `Chek tasdiqlanmadi. Muammo bo'lsa adminga murojaat qiling: @admin_username`,
+    `Chek tasdiqlanmadi. Muammo bo'lsa adminga murojaat qiling: @${process.env.BOT_USERNAME || "Rasul_dev_admin"}`,
     { parse_mode: "Markdown" }
   );
 
@@ -326,9 +340,3 @@ export const topUpCancelCallback = async (ctx) => {
   );
   await ctx.answerCbQuery("Bekor qilindi");
 };
-
-export function registerBalansHandlers(bot, mainMenu) {
-  bot.hears("⬅️ Orqaga", async (ctx) => {
-    await ctx.reply("🏠 Asosiy menu", mainMenu);
-  });
-}
