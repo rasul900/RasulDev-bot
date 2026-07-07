@@ -26,6 +26,7 @@ import {
   adminStatsHandler,
   adminBroadcastHandler,
   adminBackHandler,
+  adminCancelHandler,
   handleAdminTextInput,
   handleAdminPhotoInput,
 } from "./handlers/admin.js";
@@ -209,6 +210,7 @@ bot.hears("➕ Merch qo'shish", adminMerchAddHandler);
 bot.hears("📢 Kanal qo'shish", adminChannelAddHandler);
 bot.hears("📊 Statistika", adminStatsHandler);
 bot.hears("📨 Reklama yuborish", adminBroadcastHandler);
+bot.hears("❌ Bekor qilish", adminCancelHandler);
 bot.hears("🔙 Asosiy menu", adminBackHandler);
 
 // ── TEST ──────────────────────────────────────

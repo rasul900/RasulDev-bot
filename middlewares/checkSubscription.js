@@ -5,9 +5,16 @@ import { isAdmin } from "../config/admin.js";
 export const normalizeChannelUsername = (input) => {
   const trimmed = input.trim();
   if (!trimmed) return null;
-  const username = trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
-  if (!/^@[a-zA-Z0-9_]{4,}$/.test(username)) return null;
-  return username;
+
+  const linkMatch = trimmed.match(
+    /(?:https?:\/\/)?(?:t\.me|telegram\.me)\/([a-zA-Z0-9_]{4,})\/?/i
+  );
+  if (linkMatch) return `@${linkMatch[1]}`;
+
+  const withoutAt = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
+  if (/^[a-zA-Z0-9_]{4,}$/.test(withoutAt)) return `@${withoutAt}`;
+
+  return null;
 };
 
 export const getSubscriptionStatus = async (telegram, userId) => {
