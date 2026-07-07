@@ -1,5 +1,5 @@
 import { Markup } from "telegraf";
-import { ADMINS } from "../config/admin.js";
+import { isAdmin } from "../config/admin.js";
 import User from "../models/User.js"; // o'z modelingizga moslashtiring
 import { mainMenu } from "../keyboards/mainMenu.js";
 
@@ -283,7 +283,7 @@ export const topUpAdminCallback = async (ctx) => {
 
 // ── Admin chekni tasdiqlash ───────────────────────────────────
 export const handleAdminApprove = async (ctx) => {
-  if (!ADMINS.includes(ctx.from.id)) {
+  if (!isAdmin(ctx.from.id)) {
     return ctx.answerCbQuery("⛔ Ruxsat yo'q", { show_alert: true });
   }
 
@@ -311,7 +311,7 @@ export const handleAdminApprove = async (ctx) => {
 
 // ── Admin chekni rad etish ────────────────────────────────────
 export const handleAdminReject = async (ctx) => {
-  if (!ADMINS.includes(ctx.from.id)) {
+  if (!isAdmin(ctx.from.id)) {
     return ctx.answerCbQuery("⛔ Ruxsat yo'q", { show_alert: true });
   }
 

@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 
 import { Telegraf, session } from "telegraf";
 
@@ -49,7 +48,11 @@ import {
 
 import { merchMenu } from "./keyboards/MerchMenu.js";
 import { mainMenu } from "./keyboards/mainMenu.js";
-import { merchFutbolka } from "./handlers/futbolka.js";
+import {
+  merchShopHandler,
+  handleMerchProduct,
+  handleMerchCatalog,
+} from "./handlers/merch.js";
 import { checkSubscription, recheckSubscription } from "./middlewares/checkSubscription.js";
 
 import {
@@ -113,7 +116,7 @@ bot.hears("🛍️ Do'kon", async (ctx) => {
   await ctx.reply("🛍 Do'kon bo'limiga xush kelibsiz!", merchMenu);
 });
 
-bot.hears("👕 MERCH", merchFutbolka);
+bot.hears("👕 MERCH", merchShopHandler);
 bot.hears("⭐ Stars", StarsShop);
 bot.hears("👑 Premium", PremiumShop);
 bot.hears("🎮 PUBG UC", ucHandler);
@@ -158,6 +161,9 @@ bot.action(/^approve_\d+_\d+$/, handleAdminApprove);
 bot.action(/^reject_\d+$/, handleAdminReject);
 
 // ── NAVIGATSIYA CALLBACKLARI ──────────────────
+bot.action(/^merch_[a-f\d]{24}$/i, handleMerchProduct);
+bot.action("merch_catalog", handleMerchCatalog);
+
 bot.action("back_shop", async (ctx) => {
   await ctx.answerCbQuery();
   await ctx.deleteMessage().catch(() => {});
@@ -211,6 +217,7 @@ bot.command("myid", async (ctx) => {
 });
 
 // ── BOTNI ISHGA TUSHIRISH ─────────────────────
+await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 bot.launch();
 console.log("🚀 Bot muvaffaqiyatli ishga tushdi!");
 

@@ -1,5 +1,3 @@
-import { ADMINS } from "../config/admin.js";
+import { isAdmin } from "../config/admin.js";
 
-export const isAdmin = (ctx) => {
-  return ADMINS.includes(ctx.from.id);
-};
+export const isAdminMiddleware = (ctx) => isAdmin(ctx.from.id);

@@ -3,41 +3,47 @@ import Channel from "../models/Channel.js";
 import User from "../models/User.js";
 import Merch from "../models/Merch.js";
 import Order from "../models/Order.js";
-import { ADMINS } from "../config/admin.js";
+import { isAdmin } from "../config/admin.js";
+import {
+  normalizeChannelUsername,
+  validateChannelForBot,
+} from "../middlewares/checkSubscription.js";
 import { adminMenu } from "../keyboards/adminMenu.js";
 import { mainMenu } from "../keyboards/mainMenu.js";
 import { clearState, getState, setState } from "../utilis/states.js";
 
-const isAdminUser = (userId) => ADMINS.includes(userId);
-
 export const adminPanelHandler = async (ctx) => {
-  if (!isAdminUser(ctx.from.id)) {
-    return ctx.reply("⛔ Siz admin emassiz");
+  if (!isAdmin(ctx.from.id)) {
+    return ctx.reply(
+      `⛔ Siz admin emassiz.\n\n🆔 Sizning ID: \`${ctx.from.id}\`\n` +
+      `_Bu ID ni .env faylidagi ADMIN_ID ga qo'ying._`,
+      { parse_mode: "Markdown" }
+    );
   }
 
   await ctx.reply("⚙️ Admin Panel", adminMenu);
 };
 
 export const adminMerchAddHandler = async (ctx) => {
-  if (!isAdminUser(ctx.from.id)) return;
+  if (!isAdmin(ctx.from.id)) return;
 
   setState(ctx.from.id, { step: "merch_photo" });
   await ctx.reply("📷 Merch uchun rasm yuboring:");
 };
 
 export const adminChannelAddHandler = async (ctx) => {
-  if (!isAdminUser(ctx.from.id)) return;
+  if (!isAdmin(ctx.from.id)) return;
 
   setState(ctx.from.id, { step: "channel_username" });
   await ctx.reply(
     "📢 Kanal username yuboring:\n\n" +
-    "_Masalan: @rasul_devlop yoki rasul_devlop_",
-    { parse_mode: "Markdown" }
+    "Masalan: @rasul_devlop\n\n" +
+    "⚠️ Muhim: Bot avval kanalga admin sifatida qo'shilishi kerak!"
   );
 };
 
 export const adminStatsHandler = async (ctx) => {
-  if (!isAdminUser(ctx.from.id)) return;
+  if (!isAdmin(ctx.from.id)) return;
 
   const [userCount, orderCount, merchCount, channelCount] = await Promise.all([
     User.countDocuments(),
@@ -57,21 +63,21 @@ export const adminStatsHandler = async (ctx) => {
 };
 
 export const adminBroadcastHandler = async (ctx) => {
-  if (!isAdminUser(ctx.from.id)) return;
+  if (!isAdmin(ctx.from.id)) return;
 
   setState(ctx.from.id, { step: "broadcast_text" });
   await ctx.reply("📨 Barcha foydalanuvchilarga yuboriladigan xabarni yozing:");
 };
 
 export const adminBackHandler = async (ctx) => {
-  if (!isAdminUser(ctx.from.id)) return;
+  if (!isAdmin(ctx.from.id)) return;
 
   clearState(ctx.from.id);
   await ctx.reply("🏠 Asosiy menu", mainMenu);
 };
 
 export const handleAdminTextInput = async (ctx) => {
-  if (!isAdminUser(ctx.from.id)) return false;
+  if (!isAdmin(ctx.from.id)) return false;
 
   const state = getState(ctx.from.id);
   if (!state) return false;
@@ -105,14 +111,23 @@ export const handleAdminTextInput = async (ctx) => {
     });
 
     clearState(ctx.from.id);
-    await ctx.reply(`✅ Merch qo'shildi: *${state.name}* — ${price.toLocaleString()} so'm`, {
-      parse_mode: "Markdown",
-    });
+    await ctx.reply(
+      `✅ *Merch qo'shildi!*\n\n` +
+      `📛 ${state.name}\n` +
+      `💰 ${price.toLocaleString()} so'm\n\n` +
+      `_Mahsulot Do'kon → MERCH bo'limida ko'rinadi._`,
+      { parse_mode: "Markdown" }
+    );
     return true;
   }
 
   if (state.step === "channel_username") {
-    const username = text.startsWith("@") ? text : `@${text}`;
+    const username = normalizeChannelUsername(text);
+    if (!username) {
+      await ctx.reply("⚠️ Noto'g'ri format. Masalan: @kanal_nomi");
+      return true;
+    }
+
     const exists = await Channel.findOne({ username });
     if (exists) {
       await ctx.reply("⚠️ Bu kanal allaqachon qo'shilgan.");
@@ -120,9 +135,31 @@ export const handleAdminTextInput = async (ctx) => {
       return true;
     }
 
-    await Channel.create({ username });
-    clearState(ctx.from.id);
-    await ctx.reply(`✅ Kanal qo'shildi: ${username}`);
+    try {
+      const botInfo = await ctx.telegram.getMe();
+      const channelData = await validateChannelForBot(
+        ctx.telegram,
+        botInfo.id,
+        username
+      );
+
+      await Channel.create(channelData);
+      clearState(ctx.from.id);
+
+      await ctx.reply(
+        `✅ *Kanal qo'shildi!*\n\n` +
+        `📢 ${channelData.title}\n` +
+        `🔗 ${channelData.username}\n\n` +
+        `_Endi foydalanuvchilar obuna bo'lmaguncha bot ishlamaydi._\n` +
+        `⚠️ Bot kanalda admin bo'lishi shart!`,
+        { parse_mode: "Markdown" }
+      );
+    } catch (err) {
+      await ctx.reply(
+        `❌ Kanal qo'shilmadi:\n${err.message}\n\n` +
+        `📌 Botni kanalga *admin* qilib qo'shing, keyin qayta urinib ko'ring.`
+      );
+    }
     return true;
   }
 
@@ -151,7 +188,7 @@ export const handleAdminTextInput = async (ctx) => {
 };
 
 export const handleAdminPhotoInput = async (ctx) => {
-  if (!isAdminUser(ctx.from.id)) return false;
+  if (!isAdmin(ctx.from.id)) return false;
 
   const state = getState(ctx.from.id);
   if (!state || state.step !== "merch_photo") return false;
