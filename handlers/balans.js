@@ -327,6 +327,8 @@ export const topUpCancelCallback = async (ctx) => {
   await ctx.answerCbQuery("Bekor qilindi");
 };
 
-bot.hears("🔙 Orqaga", async (ctx) => {
-  await ctx.reply("🏠 Asosiy menu", mainMenu);
-});
+export function registerBalansHandlers(bot, mainMenu) {
+  bot.hears("⬅️ Orqaga", async (ctx) => {
+    await ctx.reply("🏠 Asosiy menu", mainMenu);
+  });
+}

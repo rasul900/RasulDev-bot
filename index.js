@@ -116,10 +116,6 @@ bot.hears("🎮 PUBG UC", ucHandler);
 bot.hears("🔙 Orqaga", async (ctx) => {
   await ctx.reply("🏠 Asosiy menu", mainMenu);
 });
-
-bot.hears("🔙 Orqaga", async (ctx) => {
-  await ctx.reply("🏠 Asosiy menu", mainMenu);
-});
 // ── HAMKORLIK CALLBACKLARI ────────────────────
 bot.action(/^partner_(?!back)/, partnershipCallbackHandler);
 bot.action("partner_back",      partnershipBackHandler);
@@ -212,3 +208,4 @@ console.log("🚀 Bot muvaffaqiyatli ishga tushdi!");
 
 process.once("SIGINT",  () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
+
