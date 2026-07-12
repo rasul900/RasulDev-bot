@@ -49,6 +49,7 @@ import {
 
 import { sendShopMenu } from "./keyboards/MerchMenu.js";
 import { sendMainMenu } from "./keyboards/mainMenu.js";
+import { wrapMaintenance } from "./config/shopMaintenance.js";
 import {
   merchShopHandler,
   handleMerchProduct,
@@ -128,9 +129,9 @@ bot.action("nav_about", fromNav(aboutHandler));
 bot.action("nav_balance", fromNav(balansHandler));
 bot.action("nav_main", fromNav(async (ctx) => sendMainMenu(ctx, "🏠 *Asosiy menu*", { parse_mode: "Markdown" })));
 bot.action("nav_merch", fromNav(merchShopHandler));
-bot.action("nav_uc", fromNav(ucHandler));
-bot.action("nav_stars", fromNav(StarsShop));
-bot.action("nav_premium", fromNav(PremiumShop));
+bot.action("nav_uc", fromNav(wrapMaintenance("uc", "🎮 PUBG UC", ucHandler)));
+bot.action("nav_stars", fromNav(wrapMaintenance("stars", "⭐ Telegram Stars", StarsShop)));
+bot.action("nav_premium", fromNav(wrapMaintenance("premium", "👑 Telegram Premium", PremiumShop)));
 bot.action("nav_ref", fromNav(pulIshlashHandler));
 bot.action("nav_topup", fromNav(topUpHandler));
 
@@ -144,9 +145,9 @@ bot.hears(["💰 Balansni to'ldirish", "🟡 Balansni to'ldirish"], topUpHandler
 
 // ── DO'KON ────────────────────────────────────
 bot.hears(["👕 MERCH", "🔴 MERCH"], merchShopHandler);
-bot.hears(["⭐ Stars", "🟡 Stars"], StarsShop);
-bot.hears(["👑 Premium", "🟢 Premium"], PremiumShop);
-bot.hears(["🎮 PUBG UC", "🟠 PUBG UC"], ucHandler);
+bot.hears(["⭐ Stars", "🟡 Stars"], wrapMaintenance("stars", "⭐ Telegram Stars", StarsShop));
+bot.hears(["👑 Premium", "🟢 Premium"], wrapMaintenance("premium", "👑 Telegram Premium", PremiumShop));
+bot.hears(["🎮 PUBG UC", "🟠 PUBG UC"], wrapMaintenance("uc", "🎮 PUBG UC", ucHandler));
 
 // ── ORQAGA ────────────────────────────────────
 const goBackToMain = async (ctx) => {

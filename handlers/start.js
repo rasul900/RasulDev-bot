@@ -1,11 +1,15 @@
 import User from "../models/User.js";
 import { startKeyboard, phoneKeyboard } from "../keyboards/main.js";
 import { sendMainMenu, refreshKeyboard } from "../keyboards/mainMenu.js";
+import { handleMerchStart } from "./merch.js";
 
 const REFERRAL_BONUS = 5000;
 
+const parseStartPayload = (ctx) =>
+  ctx.startPayload || ctx.message?.text?.split(" ")[1] || "";
+
 const parseReferrerId = (ctx) => {
-  const payload = ctx.startPayload || ctx.message?.text?.split(" ")[1] || "";
+  const payload = parseStartPayload(ctx);
   if (!payload.startsWith("ref_")) return null;
   const id = parseInt(payload.replace("ref_", ""), 10);
   return isNaN(id) ? null : id;
@@ -29,6 +33,14 @@ const applyReferral = async (newUserId, referrerId) => {
 
 export const startHandler = async (ctx) => {
   try {
+    const payload = parseStartPayload(ctx);
+
+    if (payload.startsWith("merch_")) {
+      const productId = payload.replace("merch_", "");
+      const handled = await handleMerchStart(ctx, productId);
+      if (handled) return;
+    }
+
     const referrerId = parseReferrerId(ctx);
     if (referrerId) {
       ctx.session ??= {};
