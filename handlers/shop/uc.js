@@ -1,4 +1,4 @@
-import { Markup } from "telegraf";
+import { successCb, primaryCb, dangerCb } from "../keyboards/styledButton.js";
 
 const UC_PACKAGES = {
   uc_60:   { label: "60 UC",   price: "13,000 so'm",  emoji: "💎" },
@@ -12,19 +12,19 @@ const UC_PACKAGES = {
 const ucMenu = {
   inline_keyboard: [
     [
-      { text: "🔴 60 UC — 13,000 so'm",   callback_data: "uc_60" },
-      { text: "🟠 325 UC — 60,000 so'm",  callback_data: "uc_325" },
+      successCb("💎 60 UC — 13,000 so'm", "uc_60"),
+      successCb("💎 325 UC — 60,000 so'm", "uc_325"),
     ],
     [
-      { text: "🟡 660 UC — 115,000 so'm",  callback_data: "uc_660" },
-      { text: "🟢 1800 UC — 290,000 so'm", callback_data: "uc_1800" },
+      successCb("💎 660 UC — 115,000 so'm", "uc_660"),
+      successCb("💎 1800 UC — 290,000 so'm", "uc_1800"),
     ],
     [
-      { text: "🔵 3850 UC — 580,000 so'm",   callback_data: "uc_3850" },
-      { text: "🟣 8100 UC — 1,150,000 so'm", callback_data: "uc_8100" },
+      successCb("👑 3850 UC — 580,000 so'm", "uc_3850"),
+      successCb("👑 8100 UC — 1,150,000 so'm", "uc_8100"),
     ],
     [
-      { text: "⬅️ Orqaga", callback_data: "back_shop" },
+      primaryCb("⬅️ Orqaga", "back_shop"),
     ],
   ],
 };
@@ -67,7 +67,7 @@ export const handleUcPackage = async (ctx) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "❌ Bekor qilish", callback_data: "uc_cancel" }],
+          [dangerCb("❌ Bekor qilish", "uc_cancel")],
         ],
       },
     }
@@ -81,7 +81,6 @@ export const handlePubgIdInput = async (ctx) => {
 
   const pubgId = ctx.message.text.trim();
 
-  // Faqat raqam bo'lishi kerak
   if (!/^\d{6,12}$/.test(pubgId)) {
     return ctx.reply(
       `⚠️ *Noto'g'ri ID format!*\n\n` +
@@ -111,10 +110,10 @@ export const handlePubgIdInput = async (ctx) => {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "✅ Tasdiqlash",   callback_data: "uc_confirm" },
-            { text: "✏️ ID ni o'zgartirish", callback_data: pkgKey },
+            successCb("✅ Tasdiqlash", "uc_confirm"),
+            primaryCb("✏️ ID ni o'zgartirish", pkgKey),
           ],
-          [{ text: "❌ Bekor qilish", callback_data: "uc_cancel" }],
+          [dangerCb("❌ Bekor qilish", "uc_cancel")],
         ],
       },
     }
@@ -125,9 +124,6 @@ export const handlePubgIdInput = async (ctx) => {
 export const handleUcConfirm = async (ctx) => {
   const { selectedUcPackage: pkgKey, pubgId } = ctx.session ?? {};
   const pkg = UC_PACKAGES[pkgKey];
-
-  // ⬇️ Bu yerda to'lov API ga so'rov yuborasiz
-  // await sendUcToPlayer(pubgId, pkg.label);
 
   await ctx.editMessageText(
     `🎉 *Buyurtma muvaffaqiyatli qabul qilindi!*\n\n` +
@@ -141,7 +137,7 @@ export const handleUcConfirm = async (ctx) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🛍 Do'konga qaytish", callback_data: "back_shop" }],
+          [primaryCb("🛍 Do'konga qaytish", "back_shop")],
         ],
       },
     }

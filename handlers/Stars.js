@@ -1,4 +1,5 @@
 import { starsShopMenu, forWhomMenu } from "../keyboards/StarsMenu.js";
+import { confirmCancelKb } from "../keyboards/styledButton.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 import { buyStarsViaFragment, isFragmentConfigured } from "../services/fragment.js";
@@ -54,7 +55,7 @@ export const handleBuyStars = async (ctx) => {
     `⭐ *${stars} ta Stars* — ${formatPrice(price)}\n\nBu kim uchun?`,
     {
       parse_mode: "Markdown",
-      reply_markup: forWhomMenu(stars, price),
+      reply_markup: forWhomMenu(stars),
     }
   );
   await ctx.answerCbQuery();
@@ -79,12 +80,7 @@ export const handleForSelf = async (ctx) => {
     `To'lovni tasdiqlaysizmi?`,
     {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ Tasdiqlash", callback_data: "confirm_stars" }],
-          [{ text: "❌ Bekor qilish", callback_data: "stars_shop" }],
-        ],
-      },
+      reply_markup: confirmCancelKb("confirm_stars", "stars_shop"),
     }
   );
   await ctx.answerCbQuery();
@@ -126,12 +122,7 @@ export const handleUserIdInput = async (ctx) => {
     `To'lovni tasdiqlaysizmi?`,
     {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ Tasdiqlash", callback_data: "confirm_stars" }],
-          [{ text: "❌ Bekor qilish", callback_data: "stars_shop" }],
-        ],
-      },
+      reply_markup: confirmCancelKb("confirm_stars", "stars_shop"),
     }
   );
 };
@@ -157,7 +148,7 @@ export const handleCustomAmount = async (ctx) => {
     `⭐ *${amount} ta Stars* — ${formatPrice(price)}\n\nBu kim uchun?`,
     {
       parse_mode: "Markdown",
-      reply_markup: forWhomMenu(amount, price),
+      reply_markup: forWhomMenu(amount),
     }
   );
 };

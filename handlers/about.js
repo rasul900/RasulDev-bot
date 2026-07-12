@@ -1,10 +1,10 @@
-import { mainMenu } from "../keyboards/mainMenu.js";
 import { Markup } from "telegraf";
+import { primaryUrl } from "../keyboards/styledButton.js";
 
 export const aboutHandler = async (ctx) => {
   const channelButtons = Markup.inlineKeyboard([
-    [Markup.button.url("📣 Asosiy kanal", "https://t.me/rasul_devlop")],
-    [Markup.button.url("📣 UzDevTeam", "https://t.me/UzDevTeam_Coders")],
+    [primaryUrl("📣 Asosiy kanal", "https://t.me/rasul_devlop")],
+    [primaryUrl("📣 UzDevTeam", "https://t.me/UzDevTeam_Coders")],
   ]);
 
   await ctx.reply(

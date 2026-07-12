@@ -1,5 +1,6 @@
 import Merch from "../models/Merch.js";
 import { Markup } from "telegraf";
+import { successCb, primaryCb } from "../keyboards/styledButton.js";
 
 const buildCatalog = (products) => {
   if (!products.length) {
@@ -19,12 +20,9 @@ const buildCatalog = (products) => {
       `Kerakli mahsulotni tanlang 👇`,
     keyboard: Markup.inlineKeyboard([
       ...products.map((p) => [
-        Markup.button.callback(
-          `${p.name} — ${p.price.toLocaleString()} so'm`,
-          `merch_${p._id}`
-        ),
+        successCb(`${p.name} — ${p.price.toLocaleString()} so'm`, `merch_${p._id}`),
       ]),
-      [Markup.button.callback("⬅️ Orqaga", "back_shop")],
+      [primaryCb("⬅️ Orqaga", "back_shop")],
     ]),
   };
 };
@@ -59,8 +57,8 @@ export const handleMerchProduct = async (ctx) => {
     parse_mode: "Markdown",
     reply_markup: {
       inline_keyboard: [
-        [{ text: "⬅️ Katalogga qaytish", callback_data: "merch_catalog" }],
-        [{ text: "🛍 Do'konga qaytish", callback_data: "back_shop" }],
+        [primaryCb("⬅️ Katalogga qaytish", "merch_catalog")],
+        [primaryCb("🛍 Do'konga qaytish", "back_shop")],
       ],
     },
   });

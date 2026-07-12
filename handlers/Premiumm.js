@@ -1,4 +1,5 @@
 import { premiumShopMenu, premiumForWhomMenu } from "../keyboards/PremiumMenu.js";
+import { confirmCancelKb } from "../keyboards/styledButton.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 import { giftPremiumViaFragment, isFragmentConfigured } from "../services/fragment.js";
@@ -69,12 +70,7 @@ export const handlePremiumForSelf = async (ctx) => {
     `To'lovni tasdiqlaysizmi?`,
     {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ Tasdiqlash",   callback_data: "confirm_premium" }],
-          [{ text: "❌ Bekor qilish", callback_data: "premium_shop" }],
-        ],
-      },
+      reply_markup: confirmCancelKb("confirm_premium", "premium_shop"),
     }
   );
   await ctx.answerCbQuery();
@@ -117,12 +113,7 @@ export const handlePremiumUserIdInput = async (ctx) => {
     `To'lovni tasdiqlaysizmi?`,
     {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ Tasdiqlash",   callback_data: "confirm_premium" }],
-          [{ text: "❌ Bekor qilish", callback_data: "premium_shop" }],
-        ],
-      },
+      reply_markup: confirmCancelKb("confirm_premium", "premium_shop"),
     }
   );
 };

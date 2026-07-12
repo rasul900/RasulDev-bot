@@ -2,6 +2,7 @@ import { Markup } from "telegraf";
 import { isAdmin } from "../config/admin.js";
 import User from "../models/User.js"; // o'z modelingizga moslashtiring
 import { sendBalanceMenu } from "../keyboards/BalansMenu.js";
+import { successCb, primaryCb, dangerCb, successUrl, primaryUrl } from "../keyboards/styledButton.js";
 
 const REFERRAL_BONUS = 5000; // har bir do'st uchun bonus (so'm)
 
@@ -39,8 +40,8 @@ export const pulIshlashHandler = async (ctx) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "📤 Do'stga yuborish", url: `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent("🎮 Bu botga qo'shil, birgalikda ishlaylik!")}` }],
-          [{ text: "🔄 Statistikani yangilash", callback_data: "ref_stats" }],
+          [successUrl("📤 Do'stga yuborish", `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent("🎮 Bu botga qo'shil, birgalikda ishlaylik!")}`)],
+          [primaryCb("🔄 Statistikani yangilash", "ref_stats")],
         ],
       },
     }
@@ -68,8 +69,8 @@ export const refStatsCallback = async (ctx) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "📤 Do'stga yuborish", url: `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent("🎮 Bu botga qo'shil!")}` }],
-          [{ text: "🔄 Yangilash", callback_data: "ref_stats" }],
+          [successUrl("📤 Do'stga yuborish", `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent("🎮 Bu botga qo'shil!")}`)],
+          [primaryCb("🔄 Yangilash", "ref_stats")],
         ],
       },
     }
@@ -86,8 +87,8 @@ export const topUpHandler = async (ctx) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "💳 Click / Payme orqali", callback_data: "topup_card" }],
-          [{ text: "👨‍💼 Admin orqali (chek)",   callback_data: "topup_admin" }],
+          [successCb("💳 Click / Payme orqali", "topup_card")],
+          [primaryCb("👨‍💼 Admin orqali (chek)", "topup_admin")],
         ],
       },
     }
@@ -113,14 +114,14 @@ export const topUpCardCallback = async (ctx) => {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "50,000",   callback_data: "amount_50000" },
-            { text: "100,000",  callback_data: "amount_100000" },
+            successCb("50,000", "amount_50000"),
+            successCb("100,000", "amount_100000"),
           ],
           [
-            { text: "250,000",  callback_data: "amount_250000" },
-            { text: "500,000",  callback_data: "amount_500000" },
+            successCb("250,000", "amount_250000"),
+            successCb("500,000", "amount_500000"),
           ],
-          [{ text: "❌ Bekor qilish", callback_data: "topup_cancel" }],
+          [dangerCb("❌ Bekor qilish", "topup_cancel")],
         ],
       },
     }
@@ -180,8 +181,8 @@ const sendPaymentDetails = async (ctx, amount) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "📸 Chek yuborish", callback_data: "send_check" }],
-          [{ text: "❌ Bekor qilish",  callback_data: "topup_cancel" }],
+          [successCb("📸 Chek yuborish", "send_check")],
+          [dangerCb("❌ Bekor qilish", "topup_cancel")],
         ],
       },
     }
@@ -216,8 +217,8 @@ export const handleCheckPhoto = async (ctx) => {
   ctx.session.awaitingAdminCheck = false;
 
   const approveButton = amount
-    ? { text: "✅ Tasdiqlash", callback_data: `approve_${ctx.from.id}_${amount}` }
-    : { text: "✅ Tasdiqlash (0)", callback_data: `approve_${ctx.from.id}_0` };
+    ? successCb("✅ Tasdiqlash", `approve_${ctx.from.id}_${amount}`)
+    : successCb("✅ Tasdiqlash (0)", `approve_${ctx.from.id}_0`);
 
   await ctx.telegram.sendPhoto(
     ADMIN_ID,
@@ -232,7 +233,7 @@ export const handleCheckPhoto = async (ctx) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [approveButton, { text: "❌ Rad etish", callback_data: `reject_${ctx.from.id}` }],
+          [approveButton, dangerCb("❌ Rad etish", `reject_${ctx.from.id}`)],
         ],
       },
     }
@@ -266,8 +267,8 @@ export const topUpAdminCallback = async (ctx) => {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "💬 Admin bilan bog'lanish", url: `https://t.me/${process.env.BOT_USERNAME || "Rasul_dev_admin"}` }],
-          [{ text: "❌ Bekor qilish", callback_data: "topup_cancel" }],
+          [primaryUrl("💬 Admin bilan bog'lanish", `https://t.me/${process.env.BOT_USERNAME || "Rasul_dev_admin"}`)],
+          [dangerCb("❌ Bekor qilish", "topup_cancel")],
         ],
       },
     }

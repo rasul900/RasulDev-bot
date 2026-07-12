@@ -1,6 +1,7 @@
 import { Markup } from "telegraf";
 import Channel from "../models/Channel.js";
 import { isAdmin } from "../config/admin.js";
+import { primaryUrl, successCb } from "../keyboards/styledButton.js";
 
 export const normalizeChannelUsername = (input) => {
   const trimmed = input.trim();
@@ -42,9 +43,9 @@ export const buildSubscriptionKeyboard = (channels) => {
   const buttons = channels.map((ch) => {
     const username = ch.username.replace("@", "");
     const label = ch.title ? `📢 ${ch.title}` : `📢 ${ch.username}`;
-    return [Markup.button.url(`${label}ga obuna bo'lish`, `https://t.me/${username}`)];
+    return [primaryUrl(`${label}ga obuna bo'lish`, `https://t.me/${username}`)];
   });
-  buttons.push([Markup.button.callback("✅ Obunani tekshirish", "check_sub")]);
+  buttons.push([successCb("✅ Obunani tekshirish", "check_sub")]);
   return Markup.inlineKeyboard(buttons);
 };
 
