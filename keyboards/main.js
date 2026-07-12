@@ -1,5 +1,5 @@
 import { Markup } from "telegraf";
-import { successBtn, primaryBtn } from "./styledButton.js";
+import { successBtn } from "./styledButton.js";
 
 export const startKeyboard = Markup.keyboard([
   [successBtn("🚀 Botdan foydalanish uchun ro'yxatdan o'ting")],

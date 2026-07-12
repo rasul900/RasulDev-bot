@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import { startKeyboard } from "../keyboards/main.js";
-import { mainMenu } from "../keyboards/mainMenu.js";
+import { mainInlineMenu } from "../keyboards/mainMenu.js";
 
 export const profileHandler = async (ctx) => {
   try {
@@ -22,7 +22,7 @@ export const profileHandler = async (ctx) => {
       `💰 Balans: *${(user.balance || 0).toLocaleString()} so'm*\n` +
       `👥 Referallar: *${user.referrals?.length || 0} ta*\n` +
       `📅 Ro'yxatdan o'tgan sana: *${date}*`,
-      { parse_mode: "Markdown", ...mainMenu }
+      { parse_mode: "Markdown", ...mainInlineMenu }
     );
   } catch (err) {
     console.error("❌ Profil xatosi:", err);

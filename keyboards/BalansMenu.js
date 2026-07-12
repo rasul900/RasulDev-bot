@@ -1,7 +1,15 @@
 import { Markup } from "telegraf";
-import { successBtn, primaryBtn } from "./styledButton.js";
+import { successCb, primaryCb } from "./styledButton.js";
 
-export const balansMenu = Markup.keyboard([
-  [successBtn("💸 Pul Ishlash"), successBtn("💰 balansni toldirish")],
-  [primaryBtn("⬅️ Orqaga")],
-]).resize();
+export const balanceInlineMenu = Markup.inlineKeyboard([
+  [successCb("💸 Pul Ishlash", "nav_ref"), successCb("💰 Balansni to'ldirish", "nav_topup")],
+  [primaryCb("⬅️ Orqaga", "nav_main")],
+]);
+
+export const sendBalanceMenu = async (ctx, text, extra = {}) => {
+  await ctx.reply(text, {
+    parse_mode: "Markdown",
+    ...balanceInlineMenu,
+    ...extra,
+  });
+};

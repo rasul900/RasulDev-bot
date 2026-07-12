@@ -47,8 +47,8 @@ import {
   handleAdminReject,
 } from "./handlers/balans.js";
 
-import { merchMenu } from "./keyboards/MerchMenu.js";
-import { mainMenu } from "./keyboards/mainMenu.js";
+import { sendShopMenu } from "./keyboards/MerchMenu.js";
+import { sendMainMenu } from "./keyboards/mainMenu.js";
 import {
   merchShopHandler,
   handleMerchProduct,
@@ -116,28 +116,43 @@ bot.hears(
 bot.on("contact", contactHandler);
 
 // ── MAIN MENU ─────────────────────────────────
-bot.hears("🟠 Profilim", profileHandler);
-bot.hears("🟢 Bot haqida", aboutHandler);
-bot.hears("🟡 Hamkorlik", partnershipHandler);
-bot.hears("🔵 Balans", balansHandler);
-bot.hears("🟣 Pul Ishlash", pulIshlashHandler);
-bot.hears("🟡 Balansni to'ldirish", topUpHandler);
+const fromNav = (handler) => async (ctx) => {
+  await ctx.answerCbQuery().catch(() => {});
+  return handler(ctx);
+};
+
+bot.action("nav_shop", fromNav(async (ctx) => sendShopMenu(ctx)));
+bot.action("nav_profile", fromNav(profileHandler));
+bot.action("nav_partner", fromNav(partnershipHandler));
+bot.action("nav_about", fromNav(aboutHandler));
+bot.action("nav_balance", fromNav(balansHandler));
+bot.action("nav_main", fromNav(async (ctx) => sendMainMenu(ctx, "🏠 *Asosiy menu*", { parse_mode: "Markdown" })));
+bot.action("nav_merch", fromNav(merchShopHandler));
+bot.action("nav_uc", fromNav(ucHandler));
+bot.action("nav_stars", fromNav(StarsShop));
+bot.action("nav_premium", fromNav(PremiumShop));
+bot.action("nav_ref", fromNav(pulIshlashHandler));
+bot.action("nav_topup", fromNav(topUpHandler));
+
+bot.hears(["🛍 Do'kon", "🔴 Do'kon"], async (ctx) => sendShopMenu(ctx));
+bot.hears(["👤 Profilim", "🟠 Profilim"], profileHandler);
+bot.hears(["ℹ️ Bot haqida", "🟢 Bot haqida"], aboutHandler);
+bot.hears(["🤝 Hamkorlik", "🟡 Hamkorlik"], partnershipHandler);
+bot.hears(["💰 Balans", "🔵 Balans"], balansHandler);
+bot.hears(["💸 Pul Ishlash", "🟣 Pul Ishlash"], pulIshlashHandler);
+bot.hears(["💰 Balansni to'ldirish", "🟡 Balansni to'ldirish"], topUpHandler);
 
 // ── DO'KON ────────────────────────────────────
-bot.hears("🔴 Do'kon", async (ctx) => {
-  await ctx.reply("🛍 Do'kon bo'limiga xush kelibsiz!", merchMenu);
-});
-
-bot.hears("🔴 MERCH", merchShopHandler);
-bot.hears("🟡 Stars", StarsShop);
-bot.hears("🟢 Premium", PremiumShop);
-bot.hears("🟠 PUBG UC", ucHandler);
+bot.hears(["👕 MERCH", "🔴 MERCH"], merchShopHandler);
+bot.hears(["⭐ Stars", "🟡 Stars"], StarsShop);
+bot.hears(["👑 Premium", "🟢 Premium"], PremiumShop);
+bot.hears(["🎮 PUBG UC", "🟠 PUBG UC"], ucHandler);
 
 // ── ORQAGA ────────────────────────────────────
 const goBackToMain = async (ctx) => {
-  await ctx.reply("🏠 Asosiy menu", mainMenu);
+  await sendMainMenu(ctx, "🏠 *Asosiy menu*", { parse_mode: "Markdown" });
 };
-bot.hears(["🔙 Orqaga", "⬅️ Orqaga", "🔵 Orqaga"], goBackToMain);
+bot.hears(["⬅️ Orqaga", "🔙 Orqaga", "🔵 Orqaga"], goBackToMain);
 
 // ── HAMKORLIK CALLBACKLARI ────────────────────
 bot.action(/^partner_(?!back)/, partnershipCallbackHandler);
@@ -179,13 +194,13 @@ bot.action("merch_catalog", handleMerchCatalog);
 bot.action("back_shop", async (ctx) => {
   await ctx.answerCbQuery();
   await ctx.deleteMessage().catch(() => {});
-  await ctx.reply("🛍 Do'kon bo'limiga xush kelibsiz!", merchMenu);
+  await sendShopMenu(ctx);
 });
 
 bot.action("back_main", async (ctx) => {
   await ctx.answerCbQuery();
   await ctx.deleteMessage().catch(() => {});
-  await ctx.reply("🏠 Asosiy menu", mainMenu);
+  await sendMainMenu(ctx, "🏠 *Asosiy menu*", { parse_mode: "Markdown" });
 });
 
 bot.action("check_sub", recheckSubscription);

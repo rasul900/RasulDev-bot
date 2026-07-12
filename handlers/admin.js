@@ -8,7 +8,7 @@ import {
   validateChannelForBot,
 } from "../middlewares/checkSubscription.js";
 import { adminMenu, adminCancelKeyboard } from "../keyboards/adminMenu.js";
-import { mainMenu } from "../keyboards/mainMenu.js";
+import { sendMainMenu } from "../keyboards/mainMenu.js";
 import { clearState, getState, setState } from "../utilis/states.js";
 
 const CANCEL_TEXT = "❌ Bekor qilish";
@@ -172,7 +172,7 @@ export const adminBackHandler = async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
 
   clearState(ctx.from.id);
-  await ctx.reply("🏠 Asosiy menu", mainMenu);
+  await sendMainMenu(ctx, "🏠 *Asosiy menu*", { parse_mode: "Markdown" });
 };
 
 export const handleAdminTextInput = async (ctx) => {

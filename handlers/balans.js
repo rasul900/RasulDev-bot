@@ -1,8 +1,7 @@
 import { Markup } from "telegraf";
 import { isAdmin } from "../config/admin.js";
 import User from "../models/User.js"; // o'z modelingizga moslashtiring
-import { mainMenu } from "../keyboards/mainMenu.js";
-import { successBtn, primaryBtn } from "../keyboards/styledButton.js";
+import { sendBalanceMenu } from "../keyboards/BalansMenu.js";
 
 const REFERRAL_BONUS = 5000; // har bir do'st uchun bonus (so'm)
 
@@ -10,17 +9,11 @@ const REFERRAL_BONUS = 5000; // har bir do'st uchun bonus (so'm)
 export const balansHandler = async (ctx) => {
   const user = await User.findOne({ telegramId: ctx.from.id });
 
-  await ctx.reply(
+  await sendBalanceMenu(
+    ctx,
     `💼 *Balans bo'limi*\n\n` +
     `💰 Joriy balans: *${(user?.balance || 0).toLocaleString()} so'm*\n\n` +
-    `Kerakli bo'limni tanlang:`,
-    {
-      parse_mode: "Markdown",
-      ...Markup.keyboard([
-        [successBtn("🟣 Pul Ishlash"), successBtn("🟡 Balansni to'ldirish")],
-        [primaryBtn("🔙 Orqaga")],
-      ]).resize(),
-    }
+    `Kerakli bo'limni tanlang:`
   );
 };
 

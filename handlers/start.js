@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import { startKeyboard, phoneKeyboard } from "../keyboards/main.js";
-import { mainMenu } from "../keyboards/mainMenu.js";
+import { sendMainMenu, refreshKeyboard } from "../keyboards/mainMenu.js";
 
 const REFERRAL_BONUS = 5000;
 
@@ -38,15 +38,16 @@ export const startHandler = async (ctx) => {
     const user = await User.findOne({ telegramId: ctx.from.id });
 
     if (user) {
-      await ctx.reply(
+      await refreshKeyboard(ctx);
+      await sendMainMenu(
+        ctx,
         `🏠 *Asosiy Menyu*\n\n` +
         `👋 Xush kelibsiz, *${user.firstName}*!\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
         `👇 Pastdagi menulardan ozingizga keraklisini tanlang\n` +
         `📬 Shu yerdan siz bizning kanalarimizdagi yangi postlar haqida habar olasiz!\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
-        `📌 Quyidagi bo'limlardan birini tanlang:`,
-        { parse_mode: "Markdown", ...mainMenu }
+        `📌 Quyidagi bo'limlardan birini tanlang:`
       );
     } else {
       await ctx.reply(
@@ -71,15 +72,16 @@ export const registerHandler = async (ctx) => {
     const existing = await User.findOne({ telegramId: ctx.from.id });
 
     if (existing) {
-      await ctx.reply(
+      await refreshKeyboard(ctx);
+      await sendMainMenu(
+        ctx,
         `✅ *Profilingiz topildi!*\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
         `👤 Ism: *${existing.firstName}*\n` +
         `📞 Tel: \`${existing.phone}\`\n` +
         `🌟 Holat: *Faol a'zo*\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
-        `📌 Menyu orqali davom eting:`,
-        { parse_mode: "Markdown", ...mainMenu }
+        `📌 Menyu orqali davom eting:`
       );
       return;
     }
@@ -131,7 +133,9 @@ export const contactHandler = async (ctx) => {
         ctx.session.referredBy = null;
       }
 
-      await ctx.reply(
+      await refreshKeyboard(ctx);
+      await sendMainMenu(
+        ctx,
         `🎊 *Tabriklaymiz, ${user.firstName}!*\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
         `✅ Ro'yxatdan muvaffaqiyatli o'tdingiz!\n` +
@@ -144,19 +148,19 @@ export const contactHandler = async (ctx) => {
         `🟢 Holat: *Faol*\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
         `🚀 Endi barcha imkoniyatlar sizga ochiq!\n` +
-        `📌 Quyidagi bo'limlardan birini tanlang:`,
-        { parse_mode: "Markdown", ...mainMenu }
+        `📌 Quyidagi bo'limlardan birini tanlang:`
       );
     } else {
-      await ctx.reply(
+      await refreshKeyboard(ctx);
+      await sendMainMenu(
+        ctx,
         `✅ *Profilingiz allaqachon mavjud!*\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
         `👤 Ism: *${user.firstName}*\n` +
         `📞 Tel: \`${user.phone}\`\n` +
         `🟢 Holat: *Faol a'zo*\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
-        `📌 Davom etish uchun menyuni tanlang:`,
-        { parse_mode: "Markdown", ...mainMenu }
+        `📌 Davom etish uchun menyuni tanlang:`
       );
     }
   } catch (err) {
