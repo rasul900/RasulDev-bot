@@ -16,8 +16,8 @@ export const balansHandler = async (ctx) => {
     {
       parse_mode: "Markdown",
       ...Markup.keyboard([
-        ["💸 Pul Ishlash", "💰 Balansni to'ldirish"],
-        ["⬅️ Orqaga"],
+        ["🟣 Pul Ishlash", "🟡 Balansni to'ldirish"],
+        ["🔙 Orqaga"],
       ]).resize(),
     }
   );

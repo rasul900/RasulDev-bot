@@ -1,4 +1,7 @@
 import { starsShopMenu, forWhomMenu } from "../keyboards/StarsMenu.js";
+import User from "../models/User.js";
+import Order from "../models/Order.js";
+import { buyStarsViaFragment, isFragmentConfigured } from "../services/fragment.js";
 
 // Narxlar jadvali: stars -> so'm
 const PRICES = {
@@ -163,18 +166,155 @@ export const handleCustomAmount = async (ctx) => {
 export const handleConfirmStars = async (ctx) => {
   const { pendingStars: stars, pendingPrice: price, targetUser } = ctx.session ?? {};
 
-  // ⬇️ Bu yerda to'lov API siga so'rov yuborasiz
-  // await processPayment(ctx.from.id, stars, price, targetUser);
+  if (!stars || !price) {
+    await ctx.answerCbQuery("⚠️ Buyurtma topilmadi", { show_alert: true });
+    return;
+  }
 
-  await ctx.editMessageText(
-    `✅ *Buyurtmangiz qabul qilindi!*\n\n` +
-    `⭐ ${stars} ta Stars ${targetUser ? `*${targetUser}*` : "sizning"} hisobingizga tez orada qo'shiladi.`,
-    { parse_mode: "Markdown" }
-  );
+  const user = await User.findOne({ telegramId: ctx.from.id });
+  if (!user) {
+    await ctx.answerCbQuery("⚠️ Avval ro'yxatdan o'ting", { show_alert: true });
+    return;
+  }
+
+  // 1) Balans tekshirish
+  if ((user.balance || 0) < price) {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(
+      `❌ *Balans yetarli emas!*\n\n` +
+      `💰 Kerak: *${price.toLocaleString()} so'm*\n` +
+      `💳 Sizda: *${(user.balance || 0).toLocaleString()} so'm*\n\n` +
+      `"💰 Balansni to'ldirish" orqali hisobingizni to'ldiring.`,
+      { parse_mode: "Markdown" }
+    );
+    ctx.session = {};
+    return;
+  }
+
+  // 2) Qabul qiluvchi username ni aniqlash
+  const recipient = targetUser
+    ? String(targetUser).replace("@", "")
+    : ctx.from.username;
+
+  if (!recipient) {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(
+      `❌ *Username topilmadi!*\n\n` +
+      `Stars yuborish uchun Telegram username kerak.\n` +
+      `Sozlamalardan username o'rnating yoki boshqa foydalanuvchi uchun buyurtma bering.`,
+      { parse_mode: "Markdown" }
+    );
+    ctx.session = {};
+    return;
+  }
+
+  await ctx.answerCbQuery();
+  await ctx.editMessageText("⏳ To'lov amalga oshirilmoqda, kuting...");
+
+  // 3) Balansdan yechish + buyurtma yaratish
+  user.balance -= price;
+  await user.save();
+
+  const order = await Order.create({
+    telegramId: ctx.from.id,
+    username: ctx.from.username || null,
+    type: "stars",
+    quantity: stars,
+    amount: price,
+    status: "processing",
+    note: `recipient: @${recipient}`,
+  });
 
   ctx.session = {};
-  await ctx.answerCbQuery("✅ Tasdiqlandi");
+
+  // 4) Fragment orqali yetkazish
+  if (!isFragmentConfigured()) {
+    order.status = "pending";
+    await order.save();
+    await notifyAdminNewOrder(ctx, "⭐ Stars", stars, price, recipient, order._id);
+    await ctx.editMessageText(
+      `✅ *Buyurtma qabul qilindi!*\n\n` +
+      `⭐ ${stars} ta Stars — @${recipient}\n` +
+      `💰 ${price.toLocaleString()} so'm balansdan yechildi.\n\n` +
+      `⏳ Admin qo'lda tez orada yetkazadi.`,
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
+
+  const result = await buyStarsViaFragment(recipient, stars);
+
+  if (result.ok) {
+    order.status = "completed";
+    order.note = `recipient: @${recipient}; reqId: ${result.reqId}`;
+    await order.save();
+
+    await ctx.editMessageText(
+      `✅ *Muvaffaqiyatli yetkazildi!*\n\n` +
+      `⭐ ${stars} ta Stars → @${recipient}\n` +
+      `💰 ${price.toLocaleString()} so'm\n\n` +
+      `🎉 Xaridingiz uchun rahmat!`,
+      { parse_mode: "Markdown" }
+    );
+  } else {
+    // 5) Muvaffaqiyatsiz — pulni qaytarish
+    user.balance += price;
+    await user.save();
+    order.status = "cancelled";
+    order.note = `refunded; error: ${result.error || result.reason}`;
+    await order.save();
+
+    await ctx.editMessageText(
+      `❌ *Yetkazib bo'lmadi.*\n\n` +
+      `💰 ${price.toLocaleString()} so'm balansingizga qaytarildi.\n\n` +
+      `Sabab: ${errorText(result)}\n\n` +
+      `Iltimos, username to'g'riligini tekshiring yoki keyinroq urinib ko'ring.`,
+      { parse_mode: "Markdown" }
+    );
+    await notifyAdminFailure(ctx, "⭐ Stars", stars, recipient, result);
+  }
 };
+
+const errorText = (result) => {
+  if (result.reason === "no_transaction") return "Tranzaksiya yaratilmadi";
+  if (result.error?.includes("Recipient not found")) return "Foydalanuvchi topilmadi";
+  if (result.error?.includes("insufficient")) return "Hamyonda TON yetarli emas";
+  return result.error || "Noma'lum xato";
+};
+
+const notifyAdminNewOrder = async (ctx, type, qty, price, recipient, orderId) => {
+  const adminId = process.env.ADMIN_ID;
+  if (!adminId) return;
+  try {
+    await ctx.telegram.sendMessage(
+      adminId,
+      `🆕 Yangi buyurtma (qo'lda)\n\n` +
+      `${type}: ${qty}\n` +
+      `👤 Qabul qiluvchi: @${recipient}\n` +
+      `💰 ${price.toLocaleString()} so'm\n` +
+      `🆔 Buyurtma: ${orderId}\n` +
+      `📱 Xaridor: @${ctx.from.username || ctx.from.id}`
+    );
+  } catch {}
+};
+
+const notifyAdminFailure = async (ctx, type, qty, recipient, result) => {
+  const adminId = process.env.ADMIN_ID;
+  if (!adminId) return;
+  try {
+    await ctx.telegram.sendMessage(
+      adminId,
+      `⚠️ Fragment xatosi\n\n` +
+      `${type}: ${qty}\n` +
+      `👤 @${recipient}\n` +
+      `❌ ${result.error || result.reason}\n` +
+      `📱 Xaridor: @${ctx.from.username || ctx.from.id}\n\n` +
+      `Pul avtomatik qaytarildi.`
+    );
+  } catch {}
+};
+
+export { notifyAdminNewOrder, notifyAdminFailure };
 
 // ── Stars menyusiga qaytish ──────────────────────────────────
 export const handleStarsBack = async (ctx) => {

@@ -1,4 +1,8 @@
 import { premiumShopMenu, premiumForWhomMenu } from "../keyboards/PremiumMenu.js";
+import User from "../models/User.js";
+import Order from "../models/Order.js";
+import { giftPremiumViaFragment, isFragmentConfigured } from "../services/fragment.js";
+import { notifyAdminNewOrder, notifyAdminFailure } from "./Stars.js";
 
 const PREMIUM_PLANS = {
   3:  { label: "3 oy",  price: 155000 },
@@ -130,18 +134,106 @@ export const handleConfirmPremium = async (ctx) => {
 
   const plan = PREMIUM_PLANS[months];
 
-  // ⬇️ Bu yerda to'lov API siga so'rov yuborasiz
-  // await processPayment(ctx.from.id, "premium", months, price, target);
+  if (!months || !price || !plan) {
+    await ctx.answerCbQuery("⚠️ Buyurtma topilmadi", { show_alert: true });
+    return;
+  }
 
-  await ctx.editMessageText(
-    `✅ *Buyurtmangiz qabul qilindi!*\n\n` +
-    `👑 Telegram Premium (${plan?.label}) ` +
-    `${target ? `*${target}*` : "sizning"} hisobingizga tez orada faollashtiriladi.`,
-    { parse_mode: "Markdown" }
-  );
+  const user = await User.findOne({ telegramId: ctx.from.id });
+  if (!user) {
+    await ctx.answerCbQuery("⚠️ Avval ro'yxatdan o'ting", { show_alert: true });
+    return;
+  }
+
+  if ((user.balance || 0) < price) {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(
+      `❌ *Balans yetarli emas!*\n\n` +
+      `💰 Kerak: *${price.toLocaleString()} so'm*\n` +
+      `💳 Sizda: *${(user.balance || 0).toLocaleString()} so'm*\n\n` +
+      `"💰 Balansni to'ldirish" orqali hisobingizni to'ldiring.`,
+      { parse_mode: "Markdown" }
+    );
+    ctx.session = {};
+    return;
+  }
+
+  const recipient = target
+    ? String(target).replace("@", "")
+    : ctx.from.username;
+
+  if (!recipient) {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(
+      `❌ *Username topilmadi!*\n\n` +
+      `Premium sovg'a qilish uchun Telegram username kerak.`,
+      { parse_mode: "Markdown" }
+    );
+    ctx.session = {};
+    return;
+  }
+
+  await ctx.answerCbQuery();
+  await ctx.editMessageText("⏳ To'lov amalga oshirilmoqda, kuting...");
+
+  user.balance -= price;
+  await user.save();
+
+  const order = await Order.create({
+    telegramId: ctx.from.id,
+    username: ctx.from.username || null,
+    type: "premium",
+    quantity: months,
+    amount: price,
+    status: "processing",
+    note: `recipient: @${recipient}; ${plan.label}`,
+  });
 
   ctx.session = {};
-  await ctx.answerCbQuery("✅ Tasdiqlandi");
+
+  if (!isFragmentConfigured()) {
+    order.status = "pending";
+    await order.save();
+    await notifyAdminNewOrder(ctx, `👑 Premium ${plan.label}`, months, price, recipient, order._id);
+    await ctx.editMessageText(
+      `✅ *Buyurtma qabul qilindi!*\n\n` +
+      `👑 Premium ${plan.label} — @${recipient}\n` +
+      `💰 ${price.toLocaleString()} so'm balansdan yechildi.\n\n` +
+      `⏳ Admin qo'lda tez orada faollashtiradi.`,
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
+
+  const result = await giftPremiumViaFragment(recipient, months);
+
+  if (result.ok) {
+    order.status = "completed";
+    order.note = `recipient: @${recipient}; ${plan.label}; reqId: ${result.reqId}`;
+    await order.save();
+
+    await ctx.editMessageText(
+      `✅ *Muvaffaqiyatli faollashtirildi!*\n\n` +
+      `👑 Telegram Premium ${plan.label} → @${recipient}\n` +
+      `💰 ${price.toLocaleString()} so'm\n\n` +
+      `🎉 Xaridingiz uchun rahmat!`,
+      { parse_mode: "Markdown" }
+    );
+  } else {
+    user.balance += price;
+    await user.save();
+    order.status = "cancelled";
+    order.note = `refunded; error: ${result.error || result.reason}`;
+    await order.save();
+
+    await ctx.editMessageText(
+      `❌ *Faollashtirib bo'lmadi.*\n\n` +
+      `💰 ${price.toLocaleString()} so'm balansingizga qaytarildi.\n\n` +
+      `Iltimos, username to'g'riligini tekshiring yoki keyinroq urinib ko'ring.`,
+      { parse_mode: "Markdown" }
+    );
+    await notifyAdminFailure(ctx, `👑 Premium ${plan.label}`, months, recipient, result);
+  }
 };
 
 // ── Premium menyusiga qaytish ────────────────────────────────

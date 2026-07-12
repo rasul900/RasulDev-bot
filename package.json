@@ -7,7 +7,11 @@
     "dev": "nodemon index.js"
   },
   "dependencies": {
+    "@ton/core": "^0.63.1",
+    "@ton/crypto": "^3.3.0",
+    "@ton/ton": "^16.3.0",
     "dotenv": "^16.4.5",
+    "fragment-tg": "^1.0.0",
     "mongoose": "^8.13.2",
     "nodemon": "^3.1.14",
     "telegraf": "^4.16.3"

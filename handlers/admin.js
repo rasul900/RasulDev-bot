@@ -62,6 +62,7 @@ export const adminChannelAddHandler = async (ctx) => {
 export const adminStatsHandler = async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
 
+  try {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfWeek = new Date(startOfToday);
@@ -91,7 +92,9 @@ export const adminStatsHandler = async (ctx) => {
     Channel.countDocuments(),
     Channel.find(),
     User.aggregate([{ $group: { _id: null, total: { $sum: "$balance" } } }]),
-    User.aggregate([{ $group: { _id: null, total: { $sum: { $size: "$referrals" } } } }]),
+    User.aggregate([
+      { $group: { _id: null, total: { $sum: { $size: { $ifNull: ["$referrals", []] } } } } },
+    ]),
     Order.countDocuments(),
     Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
     Order.aggregate([
@@ -99,7 +102,7 @@ export const adminStatsHandler = async (ctx) => {
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
     User.aggregate([
-      { $project: { firstName: 1, username: 1, refCount: { $size: "$referrals" } } },
+      { $project: { firstName: 1, username: 1, refCount: { $size: { $ifNull: ["$referrals", []] } } } },
       { $match: { refCount: { $gt: 0 } } },
       { $sort: { refCount: -1 } },
       { $limit: 5 },
@@ -148,6 +151,10 @@ export const adminStatsHandler = async (ctx) => {
     `📢 Kanallar: ${channelCount} ta\n${channelList}`,
     adminMenu
   );
+  } catch (err) {
+    console.error("Statistika xatosi:", err.message);
+    await ctx.reply("⚠️ Statistikani yuklashda xato yuz berdi.", adminMenu);
+  }
 };
 
 export const adminBroadcastHandler = async (ctx) => {

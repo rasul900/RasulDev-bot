@@ -12,16 +12,16 @@ const UC_PACKAGES = {
 const ucMenu = {
   inline_keyboard: [
     [
-      { text: "💎 60 UC — 13,000 so'm",   callback_data: "uc_60" },
-      { text: "💎 325 UC — 60,000 so'm",  callback_data: "uc_325" },
+      { text: "🔴 60 UC — 13,000 so'm",   callback_data: "uc_60" },
+      { text: "🟠 325 UC — 60,000 so'm",  callback_data: "uc_325" },
     ],
     [
-      { text: "💎 660 UC — 115,000 so'm",  callback_data: "uc_660" },
-      { text: "💎 1800 UC — 290,000 so'm", callback_data: "uc_1800" },
+      { text: "🟡 660 UC — 115,000 so'm",  callback_data: "uc_660" },
+      { text: "🟢 1800 UC — 290,000 so'm", callback_data: "uc_1800" },
     ],
     [
-      { text: "👑 3850 UC — 580,000 so'm",   callback_data: "uc_3850" },
-      { text: "👑 8100 UC — 1,150,000 so'm", callback_data: "uc_8100" },
+      { text: "🔵 3850 UC — 580,000 so'm",   callback_data: "uc_3850" },
+      { text: "🟣 8100 UC — 1,150,000 so'm", callback_data: "uc_8100" },
     ],
     [
       { text: "⬅️ Orqaga", callback_data: "back_shop" },

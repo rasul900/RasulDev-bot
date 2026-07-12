@@ -85,10 +85,21 @@ import {
   handleUcCancel,
 } from "./handlers/shop/uc.js";
 
+import { initFragment, isFragmentConfigured } from "./services/fragment.js";
+
 // ─────────────────────────────────────────────
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 connectDB();
+
+if (isFragmentConfigured()) {
+  initFragment().then((res) => {
+    if (res.ok) console.log("Fragment API ulandi");
+    else console.warn("Fragment init:", res.reason, res.error || "");
+  });
+} else {
+  console.log("Fragment sozlanmagan — Stars/Premium qo'lda yetkaziladi");
+}
 
 bot.use(session());
 
@@ -105,28 +116,28 @@ bot.hears(
 bot.on("contact", contactHandler);
 
 // ── MAIN MENU ─────────────────────────────────
-bot.hears("📊 Profilim", profileHandler);
-bot.hears("🛡️ Bot haqida", aboutHandler);
-bot.hears("💼 Hamkorlik", partnershipHandler);
-bot.hears("💎 Balans", balansHandler);
-bot.hears("💸 Pul Ishlash", pulIshlashHandler);
-bot.hears("💰 Balansni to'ldirish", topUpHandler);
+bot.hears("🟠 Profilim", profileHandler);
+bot.hears("🟢 Bot haqida", aboutHandler);
+bot.hears("🟡 Hamkorlik", partnershipHandler);
+bot.hears("🔵 Balans", balansHandler);
+bot.hears("🟣 Pul Ishlash", pulIshlashHandler);
+bot.hears("🟡 Balansni to'ldirish", topUpHandler);
 
 // ── DO'KON ────────────────────────────────────
-bot.hears("🛍️ Do'kon", async (ctx) => {
+bot.hears("🔴 Do'kon", async (ctx) => {
   await ctx.reply("🛍 Do'kon bo'limiga xush kelibsiz!", merchMenu);
 });
 
-bot.hears("👕 MERCH", merchShopHandler);
-bot.hears("⭐ Stars", StarsShop);
-bot.hears("👑 Premium", PremiumShop);
-bot.hears("🎮 PUBG UC", ucHandler);
+bot.hears("🔴 MERCH", merchShopHandler);
+bot.hears("🟡 Stars", StarsShop);
+bot.hears("🟢 Premium", PremiumShop);
+bot.hears("🟠 PUBG UC", ucHandler);
 
 // ── ORQAGA ────────────────────────────────────
 const goBackToMain = async (ctx) => {
   await ctx.reply("🏠 Asosiy menu", mainMenu);
 };
-bot.hears(["🔙 Orqaga", "⬅️ Orqaga"], goBackToMain);
+bot.hears(["🔙 Orqaga", "⬅️ Orqaga", "🔵 Orqaga"], goBackToMain);
 
 // ── HAMKORLIK CALLBACKLARI ────────────────────
 bot.action(/^partner_(?!back)/, partnershipCallbackHandler);
@@ -206,10 +217,10 @@ bot.on("text", async (ctx, next) => {
 
 // ── ADMIN PANEL ───────────────────────────────
 bot.command("adminpanel", adminPanelHandler);
-bot.hears("➕ Merch qo'shish", adminMerchAddHandler);
-bot.hears("📢 Kanal qo'shish", adminChannelAddHandler);
-bot.hears("📊 Statistika", adminStatsHandler);
-bot.hears("📨 Reklama yuborish", adminBroadcastHandler);
+bot.hears("🟢 Merch qo'shish", adminMerchAddHandler);
+bot.hears("🔵 Kanal qo'shish", adminChannelAddHandler);
+bot.hears("🟡 Statistika", adminStatsHandler);
+bot.hears("🟣 Reklama yuborish", adminBroadcastHandler);
 bot.hears("❌ Bekor qilish", adminCancelHandler);
 bot.hears("🔙 Asosiy menu", adminBackHandler);
 
@@ -219,6 +230,10 @@ bot.command("myid", async (ctx) => {
 });
 
 // ── BOTNI ISHGA TUSHIRISH ─────────────────────
+bot.catch((err, ctx) => {
+  console.error(`Bot xatosi (${ctx?.updateType}):`, err?.message || err);
+});
+
 await bot.telegram.deleteWebhook({ drop_pending_updates: true });
 bot.launch();
 console.log("🚀 Bot muvaffaqiyatli ishga tushdi!");
