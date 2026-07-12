@@ -2,6 +2,7 @@ import { Markup } from "telegraf";
 import { isAdmin } from "../config/admin.js";
 import User from "../models/User.js"; // o'z modelingizga moslashtiring
 import { mainMenu } from "../keyboards/mainMenu.js";
+import { successBtn, primaryBtn } from "../keyboards/styledButton.js";
 
 const REFERRAL_BONUS = 5000; // har bir do'st uchun bonus (so'm)
 
@@ -16,8 +17,8 @@ export const balansHandler = async (ctx) => {
     {
       parse_mode: "Markdown",
       ...Markup.keyboard([
-        ["🟣 Pul Ishlash", "🟡 Balansni to'ldirish"],
-        ["🔙 Orqaga"],
+        [successBtn("🟣 Pul Ishlash"), successBtn("🟡 Balansni to'ldirish")],
+        [primaryBtn("🔙 Orqaga")],
       ]).resize(),
     }
   );

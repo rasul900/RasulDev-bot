@@ -1,6 +1,7 @@
 import { Markup } from "telegraf";
+import { successBtn, primaryBtn } from "./styledButton.js";
 
 export const balansMenu = Markup.keyboard([
-    ["💸 Pul Ishlash", "💰 balansni toldirish"],
-    ["⬅️ Orqaga"]
+  [successBtn("💸 Pul Ishlash"), successBtn("💰 balansni toldirish")],
+  [primaryBtn("⬅️ Orqaga")],
 ]).resize();
