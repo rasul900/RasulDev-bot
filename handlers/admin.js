@@ -10,6 +10,7 @@ import {
 import { adminMenu, adminCancelKeyboard } from "../keyboards/adminMenu.js";
 import { sendMainMenu } from "../keyboards/mainMenu.js";
 import { clearState, getState, setState } from "../utilis/states.js";
+import { saveTelegramPhoto } from "../services/fileStorage.js";
 
 const CANCEL_TEXT = "❌ Bekor qilish";
 
@@ -160,11 +161,47 @@ export const adminStatsHandler = async (ctx) => {
 export const adminBroadcastHandler = async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
 
-  setState(ctx.from.id, { step: "broadcast_text" });
+  setState(ctx.from.id, { step: "broadcast" });
   await ctx.reply(
-    "📨 Barcha foydalanuvchilarga yuboriladigan xabarni yozing:\n\n" +
+    "📨 Barcha foydalanuvchilarga yuboriladigan xabarni yuboring:\n\n" +
+    "• Matn yozing, yoki\n" +
+    "• Rasm yuboring (izoh/caption qo'shishingiz mumkin)\n\n" +
     "Bekor qilish: ❌ Bekor qilish",
     adminCancelKeyboard
+  );
+};
+
+const runBroadcast = async (ctx, sendToUser) => {
+  const users = await User.find({}, "telegramId");
+  let sent = 0;
+  let blocked = 0;
+  let otherErrors = 0;
+
+  await ctx.reply(`📨 Yuborish boshlandi... (${users.length} ta foydalanuvchi)`);
+
+  for (const user of users) {
+    try {
+      await sendToUser(user.telegramId);
+      sent++;
+    } catch (err) {
+      const code = err?.response?.error_code;
+      const desc = err?.response?.description || "";
+      if (code === 403 || /bot was blocked|user is deactivated|chat not found/i.test(desc)) {
+        blocked++;
+      } else {
+        otherErrors++;
+      }
+    }
+  }
+
+  clearState(ctx.from.id);
+  await ctx.reply(
+    `✅ Reklama yuborildi!\n\n` +
+    `✔️ Yetkazildi: ${sent}\n` +
+    `🚫 Botni bloklagan / o'chirgan: ${blocked}\n` +
+    `⚠️ Boshqa xato: ${otherErrors}\n\n` +
+    `Jami: ${users.length} ta foydalanuvchi`,
+    adminMenu
   );
 };
 
@@ -272,37 +309,9 @@ export const handleAdminTextInput = async (ctx) => {
     return true;
   }
 
-  if (state.step === "broadcast_text") {
-    const users = await User.find({}, "telegramId");
-    let sent = 0;
-    let blocked = 0;
-    let otherErrors = 0;
-
-    await ctx.reply(`📨 Yuborish boshlandi... (${users.length} ta foydalanuvchi)`);
-
-    for (const user of users) {
-      try {
-        await ctx.telegram.sendMessage(user.telegramId, text);
-        sent++;
-      } catch (err) {
-        const code = err?.response?.error_code;
-        const desc = err?.response?.description || "";
-        if (code === 403 || /bot was blocked|user is deactivated|chat not found/i.test(desc)) {
-          blocked++;
-        } else {
-          otherErrors++;
-        }
-      }
-    }
-
-    clearState(ctx.from.id);
-    await ctx.reply(
-      `✅ Reklama yuborildi!\n\n` +
-      `✔️ Yetkazildi: ${sent}\n` +
-      `🚫 Botni bloklagan / o'chirgan: ${blocked}\n` +
-      `⚠️ Boshqa xato: ${otherErrors}\n\n` +
-      `Jami: ${users.length} ta foydalanuvchi`,
-      adminMenu
+  if (state.step === "broadcast") {
+    await runBroadcast(ctx, (chatId) =>
+      ctx.telegram.sendMessage(chatId, text)
     );
     return true;
   }
@@ -314,10 +323,44 @@ export const handleAdminPhotoInput = async (ctx) => {
   if (!isAdmin(ctx.from.id)) return false;
 
   const state = getState(ctx.from.id);
-  if (!state || state.step !== "merch_photo") return false;
+  if (!state) return false;
 
-  const photo = ctx.message.photo.at(-1).file_id;
-  setState(ctx.from.id, { step: "merch_name", photo });
-  await ctx.reply("📛 Mahsulot nomini yozing:", adminCancelKeyboard);
-  return true;
+  const fileId = ctx.message.photo.at(-1).file_id;
+  const caption = ctx.message.caption || "";
+
+  if (state.step === "merch_photo") {
+    try {
+      const { relativePath } = await saveTelegramPhoto(
+        ctx.telegram,
+        fileId,
+        "merch",
+        `admin_${ctx.from.id}`
+      );
+      setState(ctx.from.id, { step: "merch_name", photo: relativePath });
+      await ctx.reply("📛 Mahsulot nomini yozing:", adminCancelKeyboard);
+    } catch (err) {
+      console.error("Merch rasm saqlash xatosi:", err.message);
+      await ctx.reply("⚠️ Rasm saqlanmadi. Qayta yuboring.", adminCancelKeyboard);
+    }
+    return true;
+  }
+
+  if (state.step === "broadcast") {
+    try {
+      await saveTelegramPhoto(ctx.telegram, fileId, "broadcast", `admin_${ctx.from.id}`);
+      await runBroadcast(ctx, (chatId) =>
+        ctx.telegram.sendPhoto(chatId, fileId, {
+          caption: caption || undefined,
+          parse_mode: caption ? "Markdown" : undefined,
+        })
+      );
+    } catch (err) {
+      console.error("Reklama rasm xatosi:", err.message);
+      clearState(ctx.from.id);
+      await ctx.reply("⚠️ Reklama yuborilmadi. Qayta urinib ko'ring.", adminMenu);
+    }
+    return true;
+  }
+
+  return false;
 };

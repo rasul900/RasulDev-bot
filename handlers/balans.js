@@ -3,6 +3,7 @@ import { isAdmin } from "../config/admin.js";
 import User from "../models/User.js"; // o'z modelingizga moslashtiring
 import { sendBalanceMenu } from "../keyboards/BalansMenu.js";
 import { successCb, primaryCb, dangerCb, successUrl, primaryUrl } from "../keyboards/styledButton.js";
+import { saveTelegramPhoto } from "../services/fileStorage.js";
 
 const REFERRAL_BONUS = 5000; // har bir do'st uchun bonus (so'm)
 
@@ -213,8 +214,25 @@ export const handleCheckPhoto = async (ctx) => {
   const ADMIN_ID = process.env.ADMIN_ID;
   const amountText = amount ? `${amount.toLocaleString()} so'm` : "Aniqlanmagan (admin tekshiradi)";
 
+  const fileId =
+    ctx.message.photo?.at(-1)?.file_id ||
+    (ctx.message.document?.mime_type?.startsWith("image/")
+      ? ctx.message.document.file_id
+      : null);
+
+  if (!fileId) {
+    await ctx.reply("⚠️ Iltimos, chek rasmini yuboring.");
+    return;
+  }
+
   ctx.session.awaitingCheck      = false;
   ctx.session.awaitingAdminCheck = false;
+
+  try {
+    await saveTelegramPhoto(ctx.telegram, fileId, "checks", `user_${ctx.from.id}`);
+  } catch (err) {
+    console.error("Chek rasm saqlash xatosi:", err.message);
+  }
 
   const approveButton = amount
     ? successCb("✅ Tasdiqlash", `approve_${ctx.from.id}_${amount}`)
@@ -222,7 +240,7 @@ export const handleCheckPhoto = async (ctx) => {
 
   await ctx.telegram.sendPhoto(
     ADMIN_ID,
-    ctx.message.photo.at(-1).file_id,
+    fileId,
     {
       caption:
         `💰 *Yangi to'ldirish so'rovi*\n\n` +

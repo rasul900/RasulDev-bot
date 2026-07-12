@@ -1,4 +1,4 @@
-import { successCb, primaryCb, dangerCb } from "../keyboards/styledButton.js";
+import { successCb, primaryCb, dangerCb } from "../../keyboards/styledButton.js";
 
 const UC_PACKAGES = {
   uc_60:   { label: "60 UC",   price: "13,000 so'm",  emoji: "💎" },

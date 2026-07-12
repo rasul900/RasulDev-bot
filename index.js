@@ -87,6 +87,7 @@ import {
 } from "./handlers/shop/uc.js";
 
 import { initFragment, isFragmentConfigured } from "./services/fragment.js";
+import { saveTelegramPhoto } from "./services/fileStorage.js";
 
 // ─────────────────────────────────────────────
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -212,6 +213,35 @@ bot.on("photo", async (ctx) => {
 
   if (ctx.session?.awaitingCheck || ctx.session?.awaitingAdminCheck) {
     return handleCheckPhoto(ctx);
+  }
+
+  // Boshqa rasmlar — faqat qurilma xotirasiga (uploads/incoming)
+  try {
+    const fileId = ctx.message.photo.at(-1).file_id;
+    await saveTelegramPhoto(ctx.telegram, fileId, "incoming", `user_${ctx.from.id}`);
+  } catch (err) {
+    console.error("Rasm saqlash xatosi:", err.message);
+  }
+});
+
+// ── RASM FAYL (document) ──────────────────────
+bot.on("document", async (ctx) => {
+  const mime = ctx.message.document?.mime_type || "";
+  if (!mime.startsWith("image/")) return;
+
+  if (ctx.session?.awaitingCheck || ctx.session?.awaitingAdminCheck) {
+    return handleCheckPhoto(ctx);
+  }
+
+  try {
+    await saveTelegramPhoto(
+      ctx.telegram,
+      ctx.message.document.file_id,
+      "incoming",
+      `doc_${ctx.from.id}`
+    );
+  } catch (err) {
+    console.error("Document rasm saqlash xatosi:", err.message);
   }
 });
 

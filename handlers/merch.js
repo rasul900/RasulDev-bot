@@ -1,6 +1,8 @@
+import { Input } from "telegraf";
 import Merch from "../models/Merch.js";
 import { Markup } from "telegraf";
 import { successCb, primaryCb, successUrl } from "../keyboards/styledButton.js";
+import { isLocalPhoto, resolveUploadPath, fileExists } from "../services/fileStorage.js";
 
 const ADMIN_USERNAME = "Rasul_dev_admin";
 
@@ -26,16 +28,29 @@ const productKeyboard = async (ctx, product) => {
   };
 };
 
+const sendProductPhoto = async (ctx, product) => {
+  const caption =
+    `👕 *${product.name}*\n\n` +
+    `${product.description}\n\n` +
+    `💰 Narx: *${product.price.toLocaleString()} so'm*\n` +
+    `🆔 ID: \`${product._id}\``;
+
+  const keyboard = await productKeyboard(ctx, product);
+  const opts = { caption, parse_mode: "Markdown", reply_markup: keyboard };
+
+  if (isLocalPhoto(product.photo) && (await fileExists(product.photo))) {
+    return ctx.replyWithPhoto(Input.fromLocalFile(resolveUploadPath(product.photo)), opts);
+  }
+
+  if (product.photo) {
+    return ctx.replyWithPhoto(product.photo, opts);
+  }
+
+  return ctx.reply(caption, opts);
+};
+
 export const replyWithMerchProduct = async (ctx, product) => {
-  await ctx.replyWithPhoto(product.photo, {
-    caption:
-      `👕 *${product.name}*\n\n` +
-      `${product.description}\n\n` +
-      `💰 Narx: *${product.price.toLocaleString()} so'm*\n` +
-      `🆔 ID: \`${product._id}\``,
-    parse_mode: "Markdown",
-    reply_markup: await productKeyboard(ctx, product),
-  });
+  await sendProductPhoto(ctx, product);
 };
 
 export const handleMerchStart = async (ctx, productId) => {
