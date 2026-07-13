@@ -1,11 +1,41 @@
-import { Markup } from "telegraf";
 import { isAdmin } from "../config/admin.js";
-import User from "../models/User.js"; // o'z modelingizga moslashtiring
+import User from "../models/User.js";
 import { sendBalanceMenu } from "../keyboards/BalansMenu.js";
-import { successCb, primaryCb, dangerCb, successUrl, primaryUrl } from "../keyboards/styledButton.js";
-import { saveTelegramPhoto } from "../services/fileStorage.js";
+import { successCb, primaryCb, dangerCb, successUrl } from "../keyboards/styledButton.js";
+import { createTopUpPayment } from "../services/paymentService.js";
+import { isMulticardConfigured } from "../services/multicard.js";
+import { formatPaymentCard } from "../config/paymentCard.js";
 
-const REFERRAL_BONUS = 5000; // har bir do'st uchun bonus (so'm)
+const REFERRAL_BONUS = 5000;
+
+const amountKeyboard = {
+  parse_mode: "Markdown",
+  reply_markup: {
+    inline_keyboard: [
+      [
+        successCb("50,000", "amount_50000"),
+        successCb("100,000", "amount_100000"),
+      ],
+      [
+        successCb("250,000", "amount_250000"),
+        successCb("500,000", "amount_500000"),
+      ],
+      [dangerCb("❌ Bekor qilish", "topup_cancel")],
+    ],
+  },
+};
+
+const amountPrompt =
+  `💳 *Karta orqali avtomatik to'ldirish*\n\n` +
+  `━━━━━━━━━━━━━━━━━━━━\n` +
+  `📌 Minimal: *10,000 so'm*\n` +
+  `📌 Maksimal: *5,000,000 so'm*\n` +
+  `💳 Uzcard, Humo, Visa, Click, Payme\n` +
+  `━━━━━━━━━━━━━━━━━━━━\n\n` +
+  `✅ Pul tushgach balans *avtomatik* to'ldiriladi\n` +
+  `📸 Chek yuborish *shart emas*\n\n` +
+  `💬 Qancha so'm to'ldirmoqchisiz?\n` +
+  `_Faqat raqam kiriting (masalan: 50000)_`;
 
 // ── Balans menyusi ────────────────────────────────────────────
 export const balansHandler = async (ctx) => {
@@ -21,11 +51,11 @@ export const balansHandler = async (ctx) => {
 
 // ── Pul ishlash — referal ─────────────────────────────────────
 export const pulIshlashHandler = async (ctx) => {
-  const user     = await User.findOne({ telegramId: ctx.from.id });
-  const botInfo  = await ctx.telegram.getMe();
-  const refLink  = `https://t.me/${botInfo.username}?start=ref_${ctx.from.id}`;
+  const user = await User.findOne({ telegramId: ctx.from.id });
+  const botInfo = await ctx.telegram.getMe();
+  const refLink = `https://t.me/${botInfo.username}?start=ref_${ctx.from.id}`;
   const refCount = user?.referrals?.length || 0;
-  const earned   = refCount * REFERRAL_BONUS;
+  const earned = refCount * REFERRAL_BONUS;
 
   await ctx.reply(
     `💸 *Referal dasturi*\n\n` +
@@ -49,13 +79,12 @@ export const pulIshlashHandler = async (ctx) => {
   );
 };
 
-// ── Referal statistika yangilash ──────────────────────────────
 export const refStatsCallback = async (ctx) => {
-  const user     = await User.findOne({ telegramId: ctx.from.id });
-  const botInfo  = await ctx.telegram.getMe();
-  const refLink  = `https://t.me/${botInfo.username}?start=ref_${ctx.from.id}`;
+  const user = await User.findOne({ telegramId: ctx.from.id });
+  const botInfo = await ctx.telegram.getMe();
+  const refLink = `https://t.me/${botInfo.username}?start=ref_${ctx.from.id}`;
   const refCount = user?.referrals?.length || 0;
-  const earned   = refCount * REFERRAL_BONUS;
+  const earned = refCount * REFERRAL_BONUS;
 
   await ctx.editMessageText(
     `💸 *Referal dasturi*\n\n` +
@@ -79,70 +108,39 @@ export const refStatsCallback = async (ctx) => {
   await ctx.answerCbQuery("✅ Yangilandi");
 };
 
-// ── Balansni to'ldirish — usul tanlash ───────────────────────
+// ── Balansni to'ldirish — to'g'ridan-to'g'ri karta ────────────
 export const topUpHandler = async (ctx) => {
+  ctx.session ??= {};
+  ctx.session.awaitingTopUpAmount = true;
+
+  const autoNote = isMulticardConfigured()
+    ? `✅ Avtomatik to'lov yoqilgan — pul tushsa balans o'zi to'ldiriladi\n`
+    : `⚠️ Avtomatik to'lov hozircha yoqilmagan\n`;
+
   await ctx.reply(
-    `💰 *Balansni to'ldirish*\n\n` +
-    `To'lov usulini tanlang:`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [successCb("💳 Click / Payme orqali", "topup_card")],
-          [primaryCb("👨‍💼 Admin orqali (chek)", "topup_admin")],
-        ],
-      },
-    }
+    amountPrompt + `\n\n${autoNote}\n` + formatPaymentCard(),
+    amountKeyboard
   );
 };
 
-// ── Click / Payme ─────────────────────────────────────────────
 export const topUpCardCallback = async (ctx) => {
   ctx.session ??= {};
   ctx.session.awaitingTopUpAmount = true;
-  ctx.session.topUpMethod         = "card";
 
-  await ctx.editMessageText(
-    `💳 *Click / Payme orqali to'ldirish*\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `📌 Minimal: *10,000 so'm*\n` +
-    `📌 Maksimal: *5,000,000 so'm*\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `💬 Qancha so'm to'ldirmoqchisiz?\n` +
-    `_Faqat raqam kiriting (masalan: 50000)_`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [
-            successCb("50,000", "amount_50000"),
-            successCb("100,000", "amount_100000"),
-          ],
-          [
-            successCb("250,000", "amount_250000"),
-            successCb("500,000", "amount_500000"),
-          ],
-          [dangerCb("❌ Bekor qilish", "topup_cancel")],
-        ],
-      },
-    }
-  );
+  await ctx.editMessageText(amountPrompt, amountKeyboard);
   await ctx.answerCbQuery();
 };
 
-// ── Tez miqdor tugmalari ──────────────────────────────────────
 export const quickAmountCallback = async (ctx) => {
   const amount = parseInt(ctx.callbackQuery.data.split("_")[1]);
 
   ctx.session ??= {};
-  ctx.session.topUpAmount         = amount;
   ctx.session.awaitingTopUpAmount = false;
 
-  await sendPaymentDetails(ctx, amount);
+  await sendMulticardPayment(ctx, amount);
   await ctx.answerCbQuery();
 };
 
-// ── Miqdor kiritilganda ───────────────────────────────────────
 export const handleTopUpAmountInput = async (ctx) => {
   if (!ctx.session?.awaitingTopUpAmount) return;
 
@@ -155,146 +153,67 @@ export const handleTopUpAmountInput = async (ctx) => {
     return ctx.reply("⚠️ Maksimal miqdor 5,000,000 so'm. Qaytadan kiriting:");
   }
 
-  ctx.session.topUpAmount         = amount;
   ctx.session.awaitingTopUpAmount = false;
-
-  await sendPaymentDetails(ctx, amount);
+  await sendMulticardPayment(ctx, amount);
 };
 
-// ── To'lov rekvizitlari yuborish ──────────────────────────────
-const sendPaymentDetails = async (ctx, amount) => {
-  const orderId = `PAY-${ctx.from.id}-${Date.now()}`;
-
-  ctx.session ??= {};
-  ctx.session.orderId = orderId;
-
-  await ctx.reply(
-    `💳 *To'lov tafsiloti*\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `💰 Miqdor: *${amount.toLocaleString()} so'm*\n` +
-    `🔖 Buyurtma ID: \`${orderId}\`\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `💳 *Click:* \`9860 1234 5678 9012\`\n` +
-    `💳 *Payme:* \`8600 1234 5678 9012\`\n\n` +
-    `👤 Karta egasi: *Ism Familiya*\n\n` +
-    `⚠️ _To'lovdan so'ng chek rasmini yuboring!_`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [successCb("📸 Chek yuborish", "send_check")],
-          [dangerCb("❌ Bekor qilish", "topup_cancel")],
-        ],
-      },
-    }
-  );
-};
-
-// ── Chek yuborish (card) ──────────────────────────────────────
-export const sendCheckCallback = async (ctx) => {
-  ctx.session ??= {};
-  ctx.session.awaitingCheck = true;
-
-  await ctx.editMessageText(
-    `📸 *Chek rasmini yuboring*\n\n` +
-    `_To'lov chekining rasmini yoki skrinini yuboring._`,
-    { parse_mode: "Markdown" }
-  );
-  await ctx.answerCbQuery();
-};
-
-// ── Chek rasmi kelganda ───────────────────────────────────────
-export const handleCheckPhoto = async (ctx) => {
-  const isCardCheck  = ctx.session?.awaitingCheck;
-  const isAdminCheck = ctx.session?.awaitingAdminCheck;
-  if (!isCardCheck && !isAdminCheck) return;
-
-  const amount  = ctx.session?.topUpAmount;
-  const orderId = ctx.session?.orderId || `ADMIN-${ctx.from.id}-${Date.now()}`;
-  const ADMIN_ID = process.env.ADMIN_ID;
-  const amountText = amount ? `${amount.toLocaleString()} so'm` : "Aniqlanmagan (admin tekshiradi)";
-
-  const fileId =
-    ctx.message.photo?.at(-1)?.file_id ||
-    (ctx.message.document?.mime_type?.startsWith("image/")
-      ? ctx.message.document.file_id
-      : null);
-
-  if (!fileId) {
-    await ctx.reply("⚠️ Iltimos, chek rasmini yuboring.");
+const sendMulticardPayment = async (ctx, amount) => {
+  if (!isMulticardConfigured()) {
+    const orderId = `TOPUP-${ctx.from.id}-${Date.now()}`;
+    await ctx.reply(
+      `💳 *Karta orqali to'ldirish*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `💰 Miqdor: *${amount.toLocaleString()} so'm*\n` +
+      `🔖 Buyurtma: \`${orderId}\`\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `${formatPaymentCard()}\n\n` +
+      `⚠️ To'lov izohiga buyurtma ID ni yozing.\n` +
+      `Pul tushgach balans tez orada to'ldiriladi.`,
+      { parse_mode: "Markdown" }
+    );
     return;
   }
 
-  ctx.session.awaitingCheck      = false;
-  ctx.session.awaitingAdminCheck = false;
-
   try {
-    await saveTelegramPhoto(ctx.telegram, fileId, "checks", `user_${ctx.from.id}`);
+    const payment = await createTopUpPayment(ctx, amount);
+
+    await ctx.reply(
+      `💳 *To'lov sahifasi tayyor*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `💰 Miqdor: *${amount.toLocaleString()} so'm*\n` +
+      `🔖 Buyurtma: \`${payment.orderId}\`\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👇 *To'lash* tugmasini bosing va kartangizni kiriting.\n` +
+      `Pul tushgach balans *avtomatik* to'ldiriladi — chek kerak emas.`,
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [successUrl("💳 To'lash", payment.checkoutUrl)],
+            [dangerCb("❌ Bekor qilish", "topup_cancel")],
+          ],
+        },
+      }
+    );
   } catch (err) {
-    console.error("Chek rasm saqlash xatosi:", err.message);
+    console.error("Multicard invoice xatosi:", err.message);
+    await ctx.reply(
+      `❌ To'lov yaratilmadi: ${err.message}\n\nKeyinroq urinib ko'ring.`,
+      { parse_mode: "Markdown" }
+    );
   }
+};
 
-  const approveButton = amount
-    ? successCb("✅ Tasdiqlash", `approve_${ctx.from.id}_${amount}`)
-    : successCb("✅ Tasdiqlash (0)", `approve_${ctx.from.id}_0`);
-
-  await ctx.telegram.sendPhoto(
-    ADMIN_ID,
-    fileId,
-    {
-      caption:
-        `💰 *Yangi to'ldirish so'rovi*\n\n` +
-        `👤 Foydalanuvchi: @${ctx.from.username || "yo'q"}\n` +
-        `🆔 ID: \`${ctx.from.id}\`\n` +
-        `💵 Miqdor: *${amountText}*\n` +
-        `🔖 Buyurtma: \`${orderId}\``,
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [approveButton, dangerCb("❌ Rad etish", `reject_${ctx.from.id}`)],
-        ],
-      },
-    }
-  );
-
-  await ctx.reply(
-    `✅ *Chek yuborildi!*\n\n` +
-    `Admin tekshirib, balansni tez orada to'ldiradi.\n` +
-    `⏳ Odatda 5-15 daqiqa ichida.`,
+export const topUpCancelCallback = async (ctx) => {
+  ctx.session = {};
+  await ctx.editMessageText(
+    `❌ *Bekor qilindi.*\n\nBalans bo'limiga qaytdingiz.`,
     { parse_mode: "Markdown" }
   );
-
-  ctx.session = {};
+  await ctx.answerCbQuery("Bekor qilindi");
 };
 
-// ── Admin orqali to'ldirish ───────────────────────────────────
-export const topUpAdminCallback = async (ctx) => {
-  ctx.session ??= {};
-  ctx.session.awaitingAdminCheck = true;
-
-  await ctx.editMessageText(
-    `👨‍💼 *Admin orqali to'ldirish*\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `1️⃣ Admin bilan bog'laning: @${process.env.BOT_USERNAME || "Rasul_dev_admin"}\n` +
-    `2️⃣ To'lov miqdorini ayting\n` +
-    `3️⃣ To'lovni amalga oshiring\n` +
-    `4️⃣ Chekni shu yerga yuboring\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `📸 *Chek rasmini yuboring:*`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [primaryUrl("💬 Admin bilan bog'lanish", `https://t.me/${process.env.BOT_USERNAME || "Rasul_dev_admin"}`)],
-          [dangerCb("❌ Bekor qilish", "topup_cancel")],
-        ],
-      },
-    }
-  );
-  await ctx.answerCbQuery();
-};
-
-// ── Admin chekni tasdiqlash ───────────────────────────────────
+// Admin qo'lda to'ldirish (faqat /admin buyrug'i orqali)
 export const handleAdminApprove = async (ctx) => {
   if (!isAdmin(ctx.from.id)) {
     return ctx.answerCbQuery("⛔ Ruxsat yo'q", { show_alert: true });
@@ -322,7 +241,6 @@ export const handleAdminApprove = async (ctx) => {
   await ctx.answerCbQuery("✅ Balans to'ldirildi");
 };
 
-// ── Admin chekni rad etish ────────────────────────────────────
 export const handleAdminReject = async (ctx) => {
   if (!isAdmin(ctx.from.id)) {
     return ctx.answerCbQuery("⛔ Ruxsat yo'q", { show_alert: true });
@@ -333,7 +251,7 @@ export const handleAdminReject = async (ctx) => {
   await ctx.telegram.sendMessage(
     userId,
     `❌ *To'ldirish rad etildi.*\n\n` +
-    `Chek tasdiqlanmadi. Muammo bo'lsa adminga murojaat qiling: @${process.env.BOT_USERNAME || "Rasul_dev_admin"}`,
+    `Muammo bo'lsa adminga murojaat qiling: @${process.env.BOT_USERNAME || "Rasul_dev_admin"}`,
     { parse_mode: "Markdown" }
   );
 
@@ -342,14 +260,4 @@ export const handleAdminReject = async (ctx) => {
     { parse_mode: "Markdown" }
   );
   await ctx.answerCbQuery("❌ Rad etildi");
-};
-
-// ── Bekor qilish ──────────────────────────────────────────────
-export const topUpCancelCallback = async (ctx) => {
-  ctx.session = {};
-  await ctx.editMessageText(
-    `❌ *Bekor qilindi.*\n\nBalans bo'limiga qaytdingiz.`,
-    { parse_mode: "Markdown" }
-  );
-  await ctx.answerCbQuery("Bekor qilindi");
 };

@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import { startKeyboard, phoneKeyboard } from "../keyboards/main.js";
 import { sendMainMenu, refreshKeyboard } from "../keyboards/mainMenu.js";
 import { handleMerchStart } from "./merch.js";
+import { handlePaymentStart } from "../services/paymentService.js";
 
 const REFERRAL_BONUS = 5000;
 
@@ -38,6 +39,12 @@ export const startHandler = async (ctx) => {
     if (payload.startsWith("merch_")) {
       const productId = payload.replace("merch_", "");
       const handled = await handleMerchStart(ctx, productId);
+      if (handled) return;
+    }
+
+    if (payload.startsWith("pay_")) {
+      const orderId = payload.replace("pay_", "");
+      const handled = await handlePaymentStart(ctx, orderId);
       if (handled) return;
     }
 

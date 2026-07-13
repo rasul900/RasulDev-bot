@@ -37,12 +37,9 @@ import {
   topUpHandler,
   refStatsCallback,
   topUpCardCallback,
-  topUpAdminCallback,
   quickAmountCallback,
-  sendCheckCallback,
   topUpCancelCallback,
   handleTopUpAmountInput,
-  handleCheckPhoto,
   handleAdminApprove,
   handleAdminReject,
 } from "./handlers/balans.js";
@@ -88,6 +85,9 @@ import {
 
 import { initFragment, isFragmentConfigured } from "./services/fragment.js";
 import { saveTelegramPhoto } from "./services/fileStorage.js";
+import { startPaymentWebhookServer } from "./services/paymentWebhook.js";
+import { startPaymentPoller } from "./services/paymentService.js";
+import { isMulticardConfigured } from "./services/multicard.js";
 
 // ─────────────────────────────────────────────
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -101,6 +101,14 @@ if (isFragmentConfigured()) {
   });
 } else {
   console.log("Fragment sozlanmagan — Stars/Premium qo'lda yetkaziladi");
+}
+
+if (isMulticardConfigured()) {
+  startPaymentWebhookServer(bot.telegram);
+  startPaymentPoller(bot.telegram);
+  console.log("💳 Multicard avto-to'lov yoqildi (webhook + polling)");
+} else {
+  console.log("Multicard sozlanmagan — avto-to'ldirish ishlamaydi");
 }
 
 bot.use(session());
@@ -182,9 +190,7 @@ bot.action("uc_cancel", handleUcCancel);
 // ── BALANS CALLBACKLARI ───────────────────────
 bot.action("ref_stats", refStatsCallback);
 bot.action("topup_card", topUpCardCallback);
-bot.action("topup_admin", topUpAdminCallback);
 bot.action(/^amount_\d+$/, quickAmountCallback);
-bot.action("send_check", sendCheckCallback);
 bot.action("topup_cancel", topUpCancelCallback);
 bot.action(/^approve_\d+_\d+$/, handleAdminApprove);
 bot.action(/^reject_\d+$/, handleAdminReject);
@@ -211,11 +217,6 @@ bot.action("check_sub", recheckSubscription);
 bot.on("photo", async (ctx) => {
   if (await handleAdminPhotoInput(ctx)) return;
 
-  if (ctx.session?.awaitingCheck || ctx.session?.awaitingAdminCheck) {
-    return handleCheckPhoto(ctx);
-  }
-
-  // Boshqa rasmlar — faqat qurilma xotirasiga (uploads/incoming)
   try {
     const fileId = ctx.message.photo.at(-1).file_id;
     await saveTelegramPhoto(ctx.telegram, fileId, "incoming", `user_${ctx.from.id}`);
@@ -228,10 +229,6 @@ bot.on("photo", async (ctx) => {
 bot.on("document", async (ctx) => {
   const mime = ctx.message.document?.mime_type || "";
   if (!mime.startsWith("image/")) return;
-
-  if (ctx.session?.awaitingCheck || ctx.session?.awaitingAdminCheck) {
-    return handleCheckPhoto(ctx);
-  }
 
   try {
     await saveTelegramPhoto(
