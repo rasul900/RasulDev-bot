@@ -5,6 +5,7 @@ import { successCb, primaryCb, dangerCb, successUrl } from "../keyboards/styledB
 import { createTopUpPayment } from "../services/paymentService.js";
 import { isMulticardConfigured } from "../services/multicard.js";
 import { formatPaymentCard } from "../config/paymentCard.js";
+import { createSmsTopUpPayment, isSmsPaymentEnabled } from "../services/smsPayment.js";
 
 const REFERRAL_BONUS = 5000;
 
@@ -114,8 +115,12 @@ export const topUpHandler = async (ctx) => {
   ctx.session.awaitingTopUpAmount = true;
 
   const autoNote = isMulticardConfigured()
-    ? `✅ Avtomatik to'lov yoqilgan — pul tushsa balans o'zi to'ldiriladi\n`
-    : `⚠️ Avtomatik to'lov hozircha yoqilmagan\n`;
+    ? process.env.PAYMENT_PUBLIC_URL
+      ? `✅ Avtomatik to'lov yoqilgan — pul tushsa balans o'zi to'ldiriladi\n`
+      : `✅ Avtomatik to'lov yoqilgan (domen shart emas)\n`
+    : isSmsPaymentEnabled()
+      ? `✅ SMS orqali avto tekshiruv — pul tushsa balans o'zi to'ldiriladi\n`
+      : `⚠️ Avtomatik to'lov hozircha yoqilmagan\n`;
 
   await ctx.reply(
     amountPrompt + `\n\n${autoNote}\n` + formatPaymentCard(),
@@ -159,16 +164,19 @@ export const handleTopUpAmountInput = async (ctx) => {
 
 const sendMulticardPayment = async (ctx, amount) => {
   if (!isMulticardConfigured()) {
-    const orderId = `TOPUP-${ctx.from.id}-${Date.now()}`;
+    const payment = await createSmsTopUpPayment(ctx, amount);
+
     await ctx.reply(
       `💳 *Karta orqali to'ldirish*\n\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `💰 Miqdor: *${amount.toLocaleString()} so'm*\n` +
-      `🔖 Buyurtma: \`${orderId}\`\n` +
+      `🔖 Buyurtma: \`${payment.orderId}\`\n` +
       `━━━━━━━━━━━━━━━━━━━━\n\n` +
       `${formatPaymentCard()}\n\n` +
-      `⚠️ To'lov izohiga buyurtma ID ni yozing.\n` +
-      `Pul tushgach balans tez orada to'ldiriladi.`,
+      `⚠️ *Muhim:* To'lov izohiga buyurtma ID ni yozing:\n` +
+      `\`${payment.orderId}\`\n\n` +
+      `📩 Pul tushgach SMS orqali *avtomatik* tekshiriladi.\n` +
+      `Chek yuborish shart emas.`,
       { parse_mode: "Markdown" }
     );
     return;

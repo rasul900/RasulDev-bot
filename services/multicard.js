@@ -85,12 +85,14 @@ export const createInvoice = async ({
     store_id: Number(process.env.MULTICARD_STORE_ID),
     amount: amountTiyin,
     invoice_id: orderId,
-    callback_url: callbackUrl,
     return_url: returnUrl,
     return_error_url: returnErrorUrl || returnUrl,
     lang: process.env.MULTICARD_LANG || "uz",
     ofd: buildOfd(amountTiyin),
   };
+
+  // callback_url ixtiyoriy — bo'lmasa polling orqali tekshiriladi
+  if (callbackUrl) payload.callback_url = callbackUrl;
 
   const data = await apiRequest("/payment/invoice", {
     method: "POST",

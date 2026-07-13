@@ -88,6 +88,8 @@ import { saveTelegramPhoto } from "./services/fileStorage.js";
 import { startPaymentWebhookServer } from "./services/paymentWebhook.js";
 import { startPaymentPoller } from "./services/paymentService.js";
 import { isMulticardConfigured } from "./services/multicard.js";
+import { isSmsPaymentEnabled } from "./services/smsPayment.js";
+import { handleAdminSmsForward } from "./handlers/smsPayment.js";
 
 // ─────────────────────────────────────────────
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -103,12 +105,23 @@ if (isFragmentConfigured()) {
   console.log("Fragment sozlanmagan — Stars/Premium qo'lda yetkaziladi");
 }
 
+const needWebhook =
+  isSmsPaymentEnabled() ||
+  (isMulticardConfigured() && process.env.PAYMENT_PUBLIC_URL);
+
 if (isMulticardConfigured()) {
-  startPaymentWebhookServer(bot.telegram);
   startPaymentPoller(bot.telegram);
-  console.log("💳 Multicard avto-to'lov yoqildi (webhook + polling)");
-} else {
-  console.log("Multicard sozlanmagan — avto-to'ldirish ishlamaydi");
+  console.log("💳 Multicard polling yoqildi");
+}
+
+if (needWebhook) {
+  startPaymentWebhookServer(bot.telegram);
+}
+
+if (isSmsPaymentEnabled()) {
+  console.log("📩 SMS orqali avto to'lov yoqildi");
+} else if (!isMulticardConfigured()) {
+  console.log("To'lov tizimi sozlanmagan");
 }
 
 bot.use(session());
@@ -244,6 +257,7 @@ bot.on("document", async (ctx) => {
 
 // ── MATN KIRITISH ─────────────────────────────
 bot.on("text", async (ctx, next) => {
+  if (await handleAdminSmsForward(ctx)) return;
   if (await handleAdminTextInput(ctx)) return;
 
   if (ctx.session?.awaitingTopUpAmount) return handleTopUpAmountInput(ctx);

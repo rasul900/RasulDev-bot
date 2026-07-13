@@ -1,5 +1,7 @@
 import http from "http";
 import { handleMulticardWebhook } from "./paymentService.js";
+import { handleSmsWebhook } from "../handlers/smsPayment.js";
+import { isSmsPaymentEnabled } from "./smsPayment.js";
 
 const readBody = (req) =>
   new Promise((resolve, reject) => {
@@ -12,6 +14,7 @@ const readBody = (req) =>
 export const startPaymentWebhookServer = (telegram) => {
   const port = Number(process.env.PAYMENT_PORT || 3000);
   const publicUrl = process.env.PAYMENT_PUBLIC_URL;
+  const smsEnabled = isSmsPaymentEnabled();
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -30,6 +33,20 @@ export const startPaymentWebhookServer = (telegram) => {
         return;
       }
 
+      if (req.method === "POST" && req.url === "/webhook/sms" && smsEnabled) {
+        const raw = await readBody(req);
+        let payload = {};
+        try {
+          payload = JSON.parse(raw || "{}");
+        } catch {
+          payload = { text: raw };
+        }
+        const result = await handleSmsWebhook(telegram, payload);
+        res.writeHead(result.status || 200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(result.body || { ok: true }));
+        return;
+      }
+
       res.writeHead(404);
       res.end("Not found");
     } catch (err) {
@@ -41,11 +58,17 @@ export const startPaymentWebhookServer = (telegram) => {
 
   server.listen(port, () => {
     if (publicUrl) {
-      console.log(`💳 To'lov webhook: ${publicUrl}/webhook/multicard`);
-    } else {
-      console.warn("⚠️ PAYMENT_PUBLIC_URL sozlanmagan — avto-to'lov webhook ishlamaydi");
+      console.log(`💳 Multicard webhook: ${publicUrl}/webhook/multicard`);
+    }
+    if (smsEnabled) {
+      console.log(`📩 SMS webhook: port ${port}/webhook/sms`);
     }
   });
 
   return server;
+};
+
+export const startSmsWebhookOnly = (telegram) => {
+  if (!isSmsPaymentEnabled()) return null;
+  return startPaymentWebhookServer(telegram);
 };

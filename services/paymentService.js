@@ -27,10 +27,6 @@ export const createTopUpPayment = async (ctx, amountUzs) => {
   const orderId = `TOPUP-${ctx.from.id}-${Date.now()}`;
   const urls = await buildUrls(ctx.telegram, orderId);
 
-  if (!urls.callbackUrl) {
-    throw new Error("PAYMENT_PUBLIC_URL sozlanmagan (webhook uchun)");
-  }
-
   const invoice = await createInvoice({
     orderId,
     amountUzs,
@@ -201,6 +197,9 @@ export const handlePaymentStart = async (ctx, orderId) => {
   );
   return true;
 };
+
+export const isPollingMode = () =>
+  isMulticardConfigured() && !process.env.PAYMENT_PUBLIC_URL;
 
 export const startPaymentPoller = (telegram) => {
   const intervalMs = Number(process.env.PAYMENT_POLL_MS || 30000);
