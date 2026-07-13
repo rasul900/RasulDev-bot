@@ -37,7 +37,6 @@ import {
   topUpHandler,
   refStatsCallback,
   topUpCardCallback,
-  quickAmountCallback,
   topUpCancelCallback,
   handleTopUpAmountInput,
   handleAdminApprove,
@@ -203,7 +202,6 @@ bot.action("uc_cancel", handleUcCancel);
 // ── BALANS CALLBACKLARI ───────────────────────
 bot.action("ref_stats", refStatsCallback);
 bot.action("topup_card", topUpCardCallback);
-bot.action(/^amount_\d+$/, quickAmountCallback);
 bot.action("topup_cancel", topUpCancelCallback);
 bot.action(/^approve_\d+_\d+$/, handleAdminApprove);
 bot.action(/^reject_\d+$/, handleAdminReject);

@@ -1,5 +1,5 @@
 import { premiumShopMenu, premiumForWhomMenu } from "../keyboards/PremiumMenu.js";
-import { confirmCancelKb } from "../keyboards/styledButton.js";
+import { confirmCancelKb, successCb } from "../keyboards/styledButton.js";
 import User from "../models/User.js";
 import Order from "../models/Order.js";
 import { giftPremiumViaFragment, isFragmentConfigured } from "../services/fragment.js";
@@ -142,8 +142,13 @@ export const handleConfirmPremium = async (ctx) => {
       `❌ *Balans yetarli emas!*\n\n` +
       `💰 Kerak: *${price.toLocaleString()} so'm*\n` +
       `💳 Sizda: *${(user.balance || 0).toLocaleString()} so'm*\n\n` +
-      `"💰 Balansni to'ldirish" orqali hisobingizni to'ldiring.`,
-      { parse_mode: "Markdown" }
+      `Balansni to'ldiring — SMS orqali avtomatik tasdiqlanadi.`,
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [[successCb("💰 Balansni to'ldirish", "nav_topup")]],
+        },
+      }
     );
     ctx.session = {};
     return;

@@ -9,34 +9,20 @@ import { createSmsTopUpPayment, isSmsPaymentEnabled } from "../services/smsPayme
 
 const REFERRAL_BONUS = 5000;
 
-const amountKeyboard = {
-  parse_mode: "Markdown",
-  reply_markup: {
-    inline_keyboard: [
-      [
-        successCb("50,000", "amount_50000"),
-        successCb("100,000", "amount_100000"),
-      ],
-      [
-        successCb("250,000", "amount_250000"),
-        successCb("500,000", "amount_500000"),
-      ],
-      [dangerCb("❌ Bekor qilish", "topup_cancel")],
-    ],
-  },
-};
+const MIN_TOPUP = 500;
+const MAX_TOPUP = 5_000_000;
 
 const amountPrompt =
   `💳 *Karta orqali avtomatik to'ldirish*\n\n` +
   `━━━━━━━━━━━━━━━━━━━━\n` +
-  `📌 Minimal: *10,000 so'm*\n` +
-  `📌 Maksimal: *5,000,000 so'm*\n` +
+  `📌 Minimal: *${MIN_TOPUP.toLocaleString()} so'm*\n` +
+  `📌 Maksimal: *${MAX_TOPUP.toLocaleString()} so'm*\n` +
   `💳 Uzcard, Humo, Visa, Click, Payme\n` +
   `━━━━━━━━━━━━━━━━━━━━\n\n` +
   `✅ Pul tushgach balans *avtomatik* to'ldiriladi\n` +
   `📸 Chek yuborish *shart emas*\n\n` +
   `💬 Qancha so'm to'ldirmoqchisiz?\n` +
-  `_Faqat raqam kiriting (masalan: 50000)_`;
+  `_Faqat raqam kiriting (masalan: 5000)_`;
 
 // ── Balans menyusi ────────────────────────────────────────────
 export const balansHandler = async (ctx) => {
@@ -124,7 +110,7 @@ export const topUpHandler = async (ctx) => {
 
   await ctx.reply(
     amountPrompt + `\n\n${autoNote}\n` + formatPaymentCard(),
-    amountKeyboard
+    { parse_mode: "Markdown" }
   );
 };
 
@@ -132,17 +118,7 @@ export const topUpCardCallback = async (ctx) => {
   ctx.session ??= {};
   ctx.session.awaitingTopUpAmount = true;
 
-  await ctx.editMessageText(amountPrompt, amountKeyboard);
-  await ctx.answerCbQuery();
-};
-
-export const quickAmountCallback = async (ctx) => {
-  const amount = parseInt(ctx.callbackQuery.data.split("_")[1]);
-
-  ctx.session ??= {};
-  ctx.session.awaitingTopUpAmount = false;
-
-  await sendMulticardPayment(ctx, amount);
+  await ctx.editMessageText(amountPrompt, { parse_mode: "Markdown" });
   await ctx.answerCbQuery();
 };
 
@@ -151,11 +127,11 @@ export const handleTopUpAmountInput = async (ctx) => {
 
   const amount = parseInt(ctx.message.text.trim().replace(/\s/g, ""));
 
-  if (isNaN(amount) || amount < 10000) {
-    return ctx.reply("⚠️ Minimal miqdor 10,000 so'm. Qaytadan kiriting:");
+  if (isNaN(amount) || amount < MIN_TOPUP) {
+    return ctx.reply(`⚠️ Minimal miqdor ${MIN_TOPUP.toLocaleString()} so'm. Qaytadan kiriting:`);
   }
-  if (amount > 5000000) {
-    return ctx.reply("⚠️ Maksimal miqdor 5,000,000 so'm. Qaytadan kiriting:");
+  if (amount > MAX_TOPUP) {
+    return ctx.reply(`⚠️ Maksimal miqdor ${MAX_TOPUP.toLocaleString()} so'm. Qaytadan kiriting:`);
   }
 
   ctx.session.awaitingTopUpAmount = false;

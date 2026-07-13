@@ -1,8 +1,8 @@
 /** Vaqtincha o'chirilgan do'kon bo'limlari (true = tamirlanmoqda) */
 export const SHOP_MAINTENANCE = {
-  stars: true,
-  premium: true,
-  uc: true,
+  stars: false,
+  premium: false,
+  uc: false,
 };
 
 export const maintenanceMessage = (sectionName) =>
