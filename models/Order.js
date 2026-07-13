@@ -14,7 +14,7 @@ const orderSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ["stars", "premium", "merch"],
+    enum: ["stars", "premium", "merch", "smm"],
     required: true
   },
 

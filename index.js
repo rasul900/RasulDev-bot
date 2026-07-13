@@ -51,6 +51,23 @@ import {
   handleMerchProduct,
   handleMerchCatalog,
 } from "./handlers/merch.js";
+import {
+  payServicesHandler,
+  handlePayServiceSelect,
+  handleShopPaymentsBack,
+} from "./handlers/shop/payServices.js";
+import {
+  smmShopHandler,
+  handleSmmCategoryPage,
+  handleSmmCategorySelect,
+  handleSmmServicePage,
+  handleSmmServiceSelect,
+  handleSmmLinkInput,
+  handleSmmQtyInput,
+  handleSmmConfirm,
+  handleSmmCancel,
+  handleSmmBackCategories,
+} from "./handlers/shop/smmShop.js";
 import { checkSubscription, recheckSubscription } from "./middlewares/checkSubscription.js";
 
 import {
@@ -166,6 +183,8 @@ bot.hears(["💰 Balansni to'ldirish", "🟡 Balansni to'ldirish"], topUpHandler
 
 // ── DO'KON ────────────────────────────────────
 bot.hears(["👕 MERCH", "🔴 MERCH"], merchShopHandler);
+bot.hears(["📱 SMM Xizmatlar", "🟢 SMM Xizmatlar"], smmShopHandler);
+bot.hears(["💳 To'lov usullari", "🟢 To'lov usullari"], payServicesHandler);
 bot.hears(["⭐ Stars", "🟡 Stars"], wrapMaintenance("stars", "⭐ Telegram Stars", StarsShop));
 bot.hears(["👑 Premium", "🟢 Premium"], wrapMaintenance("premium", "👑 Telegram Premium", PremiumShop));
 bot.hears(["🎮 PUBG UC", "🟠 PUBG UC"], wrapMaintenance("uc", "🎮 PUBG UC", ucHandler));
@@ -207,6 +226,15 @@ bot.action(/^approve_\d+_\d+$/, handleAdminApprove);
 bot.action(/^reject_\d+$/, handleAdminReject);
 
 // ── NAVIGATSIYA CALLBACKLARI ──────────────────
+bot.action(/^pay_svc_[a-z]+$/, handlePayServiceSelect);
+bot.action("shop_payments", handleShopPaymentsBack);
+bot.action(/^smm_cats_\d+$/, handleSmmCategoryPage);
+bot.action(/^smm_cat_\d+$/, handleSmmCategorySelect);
+bot.action(/^smm_svcs_\d+$/, handleSmmServicePage);
+bot.action(/^smm_svc_\d+$/, handleSmmServiceSelect);
+bot.action("smm_confirm", handleSmmConfirm);
+bot.action("smm_cancel", handleSmmCancel);
+bot.action("smm_back_cats", handleSmmBackCategories);
 bot.action(/^merch_[a-f\d]{24}$/i, handleMerchProduct);
 bot.action("merch_catalog", handleMerchCatalog);
 
@@ -259,11 +287,13 @@ bot.on("text", async (ctx, next) => {
   if (await handleAdminTextInput(ctx)) return;
 
   if (ctx.session?.awaitingTopUpAmount) return handleTopUpAmountInput(ctx);
+  if (await handleSmmLinkInput(ctx)) return;
+  if (await handleSmmQtyInput(ctx)) return;
   if (ctx.session?.awaitingUserId) return handleUserIdInput(ctx);
   if (ctx.session?.awaitingPremiumUserId) return handlePremiumUserIdInput(ctx);
   if (ctx.session?.awaitingPubgId) return handlePubgIdInput(ctx);
 
-  if (/^\d+$/.test(ctx.message?.text?.trim())) {
+  if (/^\d+$/.test(ctx.message?.text?.trim()) && !ctx.session?.awaitingSmmQty) {
     return handleCustomAmount(ctx);
   }
 
