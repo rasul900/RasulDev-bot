@@ -123,18 +123,13 @@ if (isFragmentConfigured()) {
   console.log("Fragment sozlanmagan — Stars/Premium qo'lda yetkaziladi");
 }
 
-const needWebhook =
-  isSmsPaymentEnabled() ||
-  (isMulticardConfigured() && process.env.PAYMENT_PUBLIC_URL);
-
 if (isMulticardConfigured()) {
   startPaymentPoller(bot.telegram);
   console.log("💳 Multicard polling yoqildi");
 }
 
-if (needWebhook) {
-  startPaymentWebhookServer(bot.telegram);
-}
+// JustRunMy va boshqa PaaS health-check uchun har doim HTTP server
+startPaymentWebhookServer(bot.telegram);
 
 if (isSmsPaymentEnabled()) {
   console.log("📩 SMS orqali avto to'lov yoqildi");

@@ -12,15 +12,15 @@ const readBody = (req) =>
   });
 
 export const startPaymentWebhookServer = (telegram) => {
-  const port = Number(process.env.PAYMENT_PORT || 3000);
+  const port = Number(process.env.PORT || process.env.PAYMENT_PORT || 3000);
   const publicUrl = process.env.PAYMENT_PUBLIC_URL;
   const smsEnabled = isSmsPaymentEnabled();
 
   const server = http.createServer(async (req, res) => {
     try {
-      if (req.method === "GET" && req.url === "/health") {
+      if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: true }));
+        res.end(JSON.stringify({ ok: true, bot: true }));
         return;
       }
 
@@ -59,16 +59,16 @@ export const startPaymentWebhookServer = (telegram) => {
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
       console.error(
-        `❌ To'lov webhook serveri ishga tushmadi: ${port}-port band. ` +
-        `Botning eski nusxasi hali ishlayotgan bo'lishi mumkin. ` +
-        `Bot o'zi ishlashda davom etadi, lekin webhook/karta orqali avtomatik to'lov ishlamaydi.`
+        `❌ HTTP server ${port}-portda band. ` +
+          `Bot polling ishlashda davom etadi.`
       );
     } else {
-      console.error("To'lov webhook serveri xatosi:", err.message);
+      console.error("HTTP server xatosi:", err.message);
     }
   });
 
   server.listen(port, () => {
+    console.log(`🌐 Health server: http://0.0.0.0:${port}/health`);
     if (publicUrl) {
       console.log(`💳 Multicard webhook: ${publicUrl}/webhook/multicard`);
     }
@@ -79,6 +79,7 @@ export const startPaymentWebhookServer = (telegram) => {
 
   return server;
 };
+
 
 export const startSmsWebhookOnly = (telegram) => {
   if (!isSmsPaymentEnabled()) return null;

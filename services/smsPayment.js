@@ -113,4 +113,4 @@ export const processBankSms = async (telegram, smsText, source = "sms") => {
 };
 
 export const isSmsPaymentEnabled = () =>
-  process.env.SMS_PAYMENT_ENABLED !== "false";
+  process.env.SMS_PAYMENT_ENABLED === "true";
