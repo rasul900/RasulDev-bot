@@ -56,6 +56,18 @@ export const startPaymentWebhookServer = (telegram) => {
     }
   });
 
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(
+        `❌ To'lov webhook serveri ishga tushmadi: ${port}-port band. ` +
+        `Botning eski nusxasi hali ishlayotgan bo'lishi mumkin. ` +
+        `Bot o'zi ishlashda davom etadi, lekin webhook/karta orqali avtomatik to'lov ishlamaydi.`
+      );
+    } else {
+      console.error("To'lov webhook serveri xatosi:", err.message);
+    }
+  });
+
   server.listen(port, () => {
     if (publicUrl) {
       console.log(`💳 Multicard webhook: ${publicUrl}/webhook/multicard`);

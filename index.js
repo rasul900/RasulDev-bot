@@ -319,9 +319,18 @@ bot.catch((err, ctx) => {
   console.error(`Bot xatosi (${ctx?.updateType}):`, err?.message || err);
 });
 
+process.on("unhandledRejection", (err) => {
+  console.error("Kutilmagan promise xatosi:", err?.message || err);
+});
+
 await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-bot.launch();
-console.log("🚀 Bot muvaffaqiyatli ishga tushdi!");
+
+bot
+  .launch()
+  .then(() => console.log("🚀 Bot muvaffaqiyatli ishga tushdi!"))
+  .catch((err) => {
+    console.error("❌ Bot ishga tushmadi:", err?.message || err);
+  });
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));

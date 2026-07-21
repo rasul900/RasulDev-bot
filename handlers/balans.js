@@ -235,7 +235,7 @@ export const handleAdminReject = async (ctx) => {
   await ctx.telegram.sendMessage(
     userId,
     `❌ *To'ldirish rad etildi.*\n\n` +
-    `Muammo bo'lsa adminga murojaat qiling: @${process.env.BOT_USERNAME || "Rasul_dev_admin"}`,
+    `Muammo bo'lsa adminga murojaat qiling: @Rasul_dev_admin`,
     { parse_mode: "Markdown" }
   );
 
