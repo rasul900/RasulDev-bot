@@ -4,12 +4,6 @@ import Setting from "../models/Setting.js";
 import { isAdmin } from "../config/admin.js";
 import { primaryUrl, successCb } from "../keyboards/styledButton.js";
 
-const esc = (text = "") =>
-  String(text)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
 export const getForceSubEnabled = async () => {
   const setting = await Setting.findOne().lean();
   return setting?.forceSubEnabled !== false;
