@@ -303,9 +303,9 @@ bot.hears("🟢 Merch qo'shish", adminMerchAddHandler);
 bot.hears("🔵 Kanal qo'shish", adminChannelAddHandler);
 bot.hears("🟡 Statistika", adminStatsHandler);
 bot.hears("🟣 Reklama yuborish", adminBroadcastHandler);
-bot.hears(["🔒 Majburiy obuna", "🔵 Majburiy obuna"], adminForceSubHandler);
+bot.hears(/Majburiy obuna/i, adminForceSubHandler);
 bot.action(/^force_sub_(on|off|status)$/, handleForceSubActions);
-bot.action(/^force_ch_(add|del_[a-f\d]{24}|edit_[a-f\d]{24})$/i, handleForceSubActions);
+bot.action(/^force_ch_(add|del_[a-f0-9]{24}|edit_[a-f0-9]{24})$/i, handleForceSubActions);
 bot.hears("❌ Bekor qilish", adminCancelHandler);
 bot.hears("🔙 Asosiy menu", adminBackHandler);
 

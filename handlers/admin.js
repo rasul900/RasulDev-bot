@@ -17,6 +17,12 @@ import { saveTelegramPhoto } from "../services/fileStorage.js";
 
 const CANCEL_TEXT = "❌ Bekor qilish";
 
+const esc = (text = "") =>
+  String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
 export const adminPanelHandler = async (ctx) => {
   if (!isAdmin(ctx.from.id)) {
     return ctx.reply(
@@ -161,21 +167,19 @@ export const adminStatsHandler = async (ctx) => {
   }
 };
 
-export const adminForceSubHandler = async (ctx) => {
-  if (!isAdmin(ctx.from.id)) return;
-  await ctx.reply(...(await buildForceSubMessage()));
-};
-
 const buildForceSubMessage = async () => {
   const enabled = await getForceSubEnabled();
   const channels = await Channel.find().sort({ createdAt: 1 });
-  const status = enabled ? "✅ *YOQILGAN*" : "❌ *O'CHIRILGAN*";
+  const status = enabled ? "✅ <b>YOQILGAN</b>" : "❌ <b>O'CHIRILGAN</b>";
 
   const list = channels.length
     ? channels
-        .map((ch, i) => `${i + 1}. ${ch.title || ch.username} (\`${ch.username}\`)`)
+        .map(
+          (ch, i) =>
+            `${i + 1}. ${esc(ch.title || ch.username)} (<code>${esc(ch.username)}</code>)`
+        )
         .join("\n")
-    : "_Hali kanal yo'q_";
+    : "<i>Hali kanal yo'q</i>";
 
   const buttons = [
     enabled
@@ -196,15 +200,25 @@ const buildForceSubMessage = async () => {
   buttons.push([primaryCb("🔄 Yangilash", "force_sub_status")]);
 
   return [
-    `🔒 *Majburiy obuna*\n\n` +
+    `🔒 <b>Majburiy obuna</b>\n\n` +
       `Holat: ${status}\n\n` +
-      `📢 *Kanallar (${channels.length}):*\n${list}\n\n` +
+      `📢 <b>Kanallar (${channels.length}):</b>\n${list}\n\n` +
       `✏️ tahrirlash · 🗑 o'chirish · ➕ qo'shish`,
     {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       reply_markup: { inline_keyboard: buttons },
     },
   ];
+};
+
+export const adminForceSubHandler = async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  try {
+    await ctx.reply(...(await buildForceSubMessage()));
+  } catch (err) {
+    console.error("adminForceSubHandler:", err.message);
+    await ctx.reply(`⚠️ Majburiy obuna paneli ochilmadi: ${err.message}`);
+  }
 };
 
 export const handleForceSubActions = async (ctx) => {
