@@ -6,8 +6,11 @@ import { isAdmin } from "../config/admin.js";
 import {
   normalizeChannelUsername,
   validateChannelForBot,
+  getForceSubEnabled,
+  setForceSubEnabled,
 } from "../middlewares/checkSubscription.js";
 import { adminMenu, adminCancelKeyboard } from "../keyboards/adminMenu.js";
+import { successCb, dangerCb, primaryCb } from "../keyboards/styledButton.js";
 import { sendMainMenu } from "../keyboards/mainMenu.js";
 import { clearState, getState, setState } from "../utilis/states.js";
 import { saveTelegramPhoto } from "../services/fileStorage.js";
@@ -156,6 +159,62 @@ export const adminStatsHandler = async (ctx) => {
     console.error("Statistika xatosi:", err.message);
     await ctx.reply("⚠️ Statistikani yuklashda xato yuz berdi.", adminMenu);
   }
+};
+
+export const adminForceSubHandler = async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+
+  const enabled = await getForceSubEnabled();
+  const status = enabled ? "✅ *YOQILGAN*" : "❌ *O'CHIRILGAN*";
+
+  await ctx.reply(
+    `🔒 *Majburiy obuna*\n\n` +
+    `Hozirgi holat: ${status}\n\n` +
+    `Yoqilganda foydalanuvchilar kanallarga obuna bo'lmaguncha bot ishlamaydi.`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          enabled
+            ? [dangerCb("🚫 O'chirish", "force_sub_off")]
+            : [successCb("✅ Yoqish", "force_sub_on")],
+          [primaryCb("🔄 Yangilash", "force_sub_status")],
+        ],
+      },
+    }
+  );
+};
+
+export const handleForceSubToggle = async (ctx) => {
+  if (!isAdmin(ctx.from.id)) {
+    return ctx.answerCbQuery("⛔ Faqat admin", { show_alert: true });
+  }
+
+  const data = ctx.callbackQuery.data;
+
+  if (data === "force_sub_on") await setForceSubEnabled(true);
+  if (data === "force_sub_off") await setForceSubEnabled(false);
+
+  const enabled = await getForceSubEnabled();
+  const status = enabled ? "✅ *YOQILGAN*" : "❌ *O'CHIRILGAN*";
+
+  await ctx.answerCbQuery(enabled ? "Majburiy obuna yoqildi" : "Majburiy obuna o'chirildi");
+  await ctx.editMessageText(
+    `🔒 *Majburiy obuna*\n\n` +
+    `Hozirgi holat: ${status}\n\n` +
+    `Yoqilganda foydalanuvchilar kanallarga obuna bo'lmaguncha bot ishlamaydi.`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          enabled
+            ? [dangerCb("🚫 O'chirish", "force_sub_off")]
+            : [successCb("✅ Yoqish", "force_sub_on")],
+          [primaryCb("🔄 Yangilash", "force_sub_status")],
+        ],
+      },
+    }
+  );
 };
 
 export const adminBroadcastHandler = async (ctx) => {

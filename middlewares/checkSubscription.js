@@ -1,7 +1,22 @@
 import { Markup } from "telegraf";
 import Channel from "../models/Channel.js";
+import Setting from "../models/Setting.js";
 import { isAdmin } from "../config/admin.js";
 import { primaryUrl, successCb } from "../keyboards/styledButton.js";
+
+export const getForceSubEnabled = async () => {
+  const setting = await Setting.findOne().lean();
+  return setting?.forceSubEnabled !== false;
+};
+
+export const setForceSubEnabled = async (enabled) => {
+  let setting = await Setting.findOne();
+  if (!setting) setting = new Setting();
+  setting.forceSubEnabled = enabled;
+  setting.updatedAt = new Date();
+  await setting.save();
+  return setting.forceSubEnabled;
+};
 
 export const normalizeChannelUsername = (input) => {
   const trimmed = input.trim();
@@ -71,6 +86,8 @@ export const checkSubscription = async (ctx, next) => {
   if (isAdmin(ctx.from.id)) return next();
   if (ctx.callbackQuery?.data === "check_sub") return next();
 
+  if (!(await getForceSubEnabled())) return next();
+
   const { ok, missing } = await getSubscriptionStatus(ctx.telegram, ctx.from.id);
   if (ok) {
     if (ctx.session?.subWarningSent) ctx.session.subWarningSent = false;
@@ -90,6 +107,15 @@ export const checkSubscription = async (ctx, next) => {
 };
 
 export const recheckSubscription = async (ctx) => {
+  if (!(await getForceSubEnabled())) {
+    ctx.session ??= {};
+    ctx.session.subWarningSent = false;
+    await ctx.answerCbQuery("✅ Majburiy obuna o'chirilgan");
+    await ctx.deleteMessage().catch(() => {});
+    await ctx.reply("✅ Endi botdan foydalanishingiz mumkin.\n\n📌 /start buyrug'ini yuboring.");
+    return;
+  }
+
   const { ok, missing } = await getSubscriptionStatus(ctx.telegram, ctx.from.id);
 
   if (!ok) {

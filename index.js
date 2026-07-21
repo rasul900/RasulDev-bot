@@ -25,6 +25,8 @@ import {
   adminChannelAddHandler,
   adminStatsHandler,
   adminBroadcastHandler,
+  adminForceSubHandler,
+  handleForceSubToggle,
   adminBackHandler,
   adminCancelHandler,
   handleAdminTextInput,
@@ -306,6 +308,8 @@ bot.hears("🟢 Merch qo'shish", adminMerchAddHandler);
 bot.hears("🔵 Kanal qo'shish", adminChannelAddHandler);
 bot.hears("🟡 Statistika", adminStatsHandler);
 bot.hears("🟣 Reklama yuborish", adminBroadcastHandler);
+bot.hears(["🔒 Majburiy obuna", "🔵 Majburiy obuna"], adminForceSubHandler);
+bot.action(/^force_sub_(on|off|status)$/, handleForceSubToggle);
 bot.hears("❌ Bekor qilish", adminCancelHandler);
 bot.hears("🔙 Asosiy menu", adminBackHandler);
 
