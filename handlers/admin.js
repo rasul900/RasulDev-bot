@@ -163,58 +163,115 @@ export const adminStatsHandler = async (ctx) => {
 
 export const adminForceSubHandler = async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
-
-  const enabled = await getForceSubEnabled();
-  const status = enabled ? "✅ *YOQILGAN*" : "❌ *O'CHIRILGAN*";
-
-  await ctx.reply(
-    `🔒 *Majburiy obuna*\n\n` +
-    `Hozirgi holat: ${status}\n\n` +
-    `Yoqilganda foydalanuvchilar kanallarga obuna bo'lmaguncha bot ishlamaydi.`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          enabled
-            ? [dangerCb("🚫 O'chirish", "force_sub_off")]
-            : [successCb("✅ Yoqish", "force_sub_on")],
-          [primaryCb("🔄 Yangilash", "force_sub_status")],
-        ],
-      },
-    }
-  );
+  await ctx.reply(...(await buildForceSubMessage()));
 };
 
-export const handleForceSubToggle = async (ctx) => {
+const buildForceSubMessage = async () => {
+  const enabled = await getForceSubEnabled();
+  const channels = await Channel.find().sort({ createdAt: 1 });
+  const status = enabled ? "✅ *YOQILGAN*" : "❌ *O'CHIRILGAN*";
+
+  const list = channels.length
+    ? channels
+        .map((ch, i) => `${i + 1}. ${ch.title || ch.username} (\`${ch.username}\`)`)
+        .join("\n")
+    : "_Hali kanal yo'q_";
+
+  const buttons = [
+    enabled
+      ? [dangerCb("🚫 Obunani o'chirish", "force_sub_off")]
+      : [successCb("✅ Obunani yoqish", "force_sub_on")],
+    [successCb("➕ Kanal qo'shish", "force_ch_add")],
+  ];
+
+  for (const ch of channels) {
+    const id = String(ch._id);
+    const label = (ch.title || ch.username).slice(0, 22);
+    buttons.push([
+      primaryCb(`✏️ ${label}`, `force_ch_edit_${id}`),
+      dangerCb("🗑", `force_ch_del_${id}`),
+    ]);
+  }
+
+  buttons.push([primaryCb("🔄 Yangilash", "force_sub_status")]);
+
+  return [
+    `🔒 *Majburiy obuna*\n\n` +
+      `Holat: ${status}\n\n` +
+      `📢 *Kanallar (${channels.length}):*\n${list}\n\n` +
+      `✏️ tahrirlash · 🗑 o'chirish · ➕ qo'shish`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: { inline_keyboard: buttons },
+    },
+  ];
+};
+
+export const handleForceSubActions = async (ctx) => {
   if (!isAdmin(ctx.from.id)) {
     return ctx.answerCbQuery("⛔ Faqat admin", { show_alert: true });
   }
 
   const data = ctx.callbackQuery.data;
 
-  if (data === "force_sub_on") await setForceSubEnabled(true);
-  if (data === "force_sub_off") await setForceSubEnabled(false);
+  if (data === "force_sub_on") {
+    await setForceSubEnabled(true);
+    await ctx.answerCbQuery("Yoqildi");
+    return ctx.editMessageText(...(await buildForceSubMessage()));
+  }
 
-  const enabled = await getForceSubEnabled();
-  const status = enabled ? "✅ *YOQILGAN*" : "❌ *O'CHIRILGAN*";
+  if (data === "force_sub_off") {
+    await setForceSubEnabled(false);
+    await ctx.answerCbQuery("O'chirildi");
+    return ctx.editMessageText(...(await buildForceSubMessage()));
+  }
 
-  await ctx.answerCbQuery(enabled ? "Majburiy obuna yoqildi" : "Majburiy obuna o'chirildi");
-  await ctx.editMessageText(
-    `🔒 *Majburiy obuna*\n\n` +
-    `Hozirgi holat: ${status}\n\n` +
-    `Yoqilganda foydalanuvchilar kanallarga obuna bo'lmaguncha bot ishlamaydi.`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          enabled
-            ? [dangerCb("🚫 O'chirish", "force_sub_off")]
-            : [successCb("✅ Yoqish", "force_sub_on")],
-          [primaryCb("🔄 Yangilash", "force_sub_status")],
-        ],
-      },
+  if (data === "force_sub_status") {
+    await ctx.answerCbQuery("Yangilandi");
+    return ctx.editMessageText(...(await buildForceSubMessage()));
+  }
+
+  if (data === "force_ch_add") {
+    await ctx.answerCbQuery();
+    setState(ctx.from.id, { step: "channel_username" });
+    await ctx.reply(
+      "➕ *Yangi kanal*\n\n" +
+        "Yuboring: `@kanal` yoki `https://t.me/kanal`\n\n" +
+        "⚠️ Bot kanalda admin bo'lishi shart!",
+      { parse_mode: "Markdown", ...adminCancelKeyboard }
+    );
+    return;
+  }
+
+  if (data.startsWith("force_ch_del_")) {
+    const id = data.replace("force_ch_del_", "");
+    const removed = await Channel.findByIdAndDelete(id);
+    await ctx.answerCbQuery(
+      removed ? `O'chirildi: ${removed.username}` : "Topilmadi",
+      { show_alert: true }
+    );
+    return ctx.editMessageText(...(await buildForceSubMessage()));
+  }
+
+  if (data.startsWith("force_ch_edit_")) {
+    const id = data.replace("force_ch_edit_", "");
+    const channel = await Channel.findById(id);
+    if (!channel) {
+      await ctx.answerCbQuery("Kanal topilmadi", { show_alert: true });
+      return ctx.editMessageText(...(await buildForceSubMessage()));
     }
-  );
+
+    await ctx.answerCbQuery();
+    setState(ctx.from.id, { step: "channel_edit", channelId: id });
+    await ctx.reply(
+      `✏️ *Kanalni tahrirlash*\n\n` +
+        `Hozirgi: \`${channel.username}\`\n` +
+        `Nom: ${channel.title || "—"}\n\n` +
+        `Yangi kanalni yuboring: \`@kanal\` yoki link\n` +
+        `⚠️ Bot yangi kanalda ham admin bo'lishi kerak!`,
+      { parse_mode: "Markdown", ...adminCancelKeyboard }
+    );
+  }
 };
 
 export const adminBroadcastHandler = async (ctx) => {
@@ -320,23 +377,26 @@ export const handleAdminTextInput = async (ctx) => {
     return true;
   }
 
-  if (state.step === "channel_username") {
+  if (state.step === "channel_username" || state.step === "channel_edit") {
     const username = normalizeChannelUsername(text);
     if (!username) {
       await ctx.reply(
         "⚠️ Noto'g'ri format!\n\n" +
-        "Qabul qilinadi:\n" +
-        "• @kanal_nomi\n" +
-        "• https://t.me/kanal_nomi",
+          "Qabul qilinadi:\n" +
+          "• @kanal_nomi\n" +
+          "• https://t.me/kanal_nomi",
         adminCancelKeyboard
       );
       return true;
     }
 
-    const exists = await Channel.findOne({ username });
+    const exists = await Channel.findOne({
+      username,
+      ...(state.step === "channel_edit" ? { _id: { $ne: state.channelId } } : {}),
+    });
     if (exists) {
-      await ctx.reply("⚠️ Bu kanal allaqachon qo'shilgan.", adminMenu);
       clearState(ctx.from.id);
+      await ctx.reply("⚠️ Bu kanal allaqachon qo'shilgan.", adminMenu);
       return true;
     }
 
@@ -348,20 +408,30 @@ export const handleAdminTextInput = async (ctx) => {
         username
       );
 
-      await Channel.create(channelData);
-      clearState(ctx.from.id);
-
-      await ctx.reply(
-        `✅ Kanal qo'shildi!\n\n` +
-        `📢 ${channelData.title}\n` +
-        `🔗 ${channelData.username}\n\n` +
-        `Endi foydalanuvchilar obuna bo'lmaguncha bot ishlamaydi.`,
-        adminMenu
-      );
+      if (state.step === "channel_edit") {
+        await Channel.findByIdAndUpdate(state.channelId, channelData);
+        clearState(ctx.from.id);
+        await ctx.reply(
+          `✅ Kanal yangilandi!\n\n` +
+            `📢 ${channelData.title}\n` +
+            `🔗 ${channelData.username}`,
+          adminMenu
+        );
+      } else {
+        await Channel.create(channelData);
+        clearState(ctx.from.id);
+        await ctx.reply(
+          `✅ Kanal qo'shildi!\n\n` +
+            `📢 ${channelData.title}\n` +
+            `🔗 ${channelData.username}\n\n` +
+            `Endi foydalanuvchilar obuna bo'lmaguncha bot ishlamaydi.`,
+          adminMenu
+        );
+      }
     } catch (err) {
       await ctx.reply(
-        `❌ Kanal qo'shilmadi:\n${err.message}\n\n` +
-        `Botni kanalga admin qilib qo'shing, keyin qayta urinib ko'ring.`,
+        `❌ Kanal saqlanmadi:\n${err.message}\n\n` +
+          `Botni kanalga admin qilib qo'shing, keyin qayta urinib ko'ring.`,
         adminCancelKeyboard
       );
     }
