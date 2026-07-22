@@ -72,9 +72,9 @@ export const startHandler = async (ctx) => {
       await ctx.reply(
         `✨ *Assalomu alaykum!*\n\n` +
         `━━━━━━━━━━━━━━━━━━━\n` +
-        `🚀 Kanalimizga xush kelibsiz!\n` +
-        `🎯 Bu yerda siz uchun eng qimmatli kontent\n` +
-        `💎 Eksklyuziv materiallar va yangiliklar\n` +
+        `🤖 *RasulDev* botiga xush kelibsiz!\n` +
+        `🛒 Stars, Premium, UC va boshqa xizmatlar\n` +
+        `💎 Tez, qulay va ishonchli xarid\n` +
         `━━━━━━━━━━━━━━━━━━━\n\n` +
         `👇 Davom etish uchun ro'yxatdan o'ting:`,
         { parse_mode: "Markdown", ...startKeyboard }
