@@ -6,8 +6,6 @@ import { isAdmin } from "../config/admin.js";
 import {
   normalizeChannelUsername,
   validateChannelForBot,
-  getForceSubEnabled,
-  setForceSubEnabled,
 } from "../middlewares/checkSubscription.js";
 import { adminMenu, adminCancelKeyboard } from "../keyboards/adminMenu.js";
 import { successCb, dangerCb, primaryCb } from "../keyboards/styledButton.js";
@@ -53,124 +51,18 @@ export const adminMerchAddHandler = async (ctx) => {
   );
 };
 
-export const adminChannelAddHandler = async (ctx) => {
+export const adminChannelsHandler = async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
-
-  setState(ctx.from.id, { step: "channel_username" });
-  await ctx.reply(
-    "📢 Kanal ma'lumotini yuboring:\n\n" +
-    "Qabul qilinadi:\n" +
-    "• @kanal_nomi\n" +
-    "• kanal_nomi\n" +
-    "• https://t.me/kanal_nomi\n\n" +
-    "⚠️ Bot avval kanalga admin qilib qo'shilishi kerak!\n\n" +
-    "Bekor qilish: ❌ Bekor qilish",
-    adminCancelKeyboard
-  );
-};
-
-export const adminStatsHandler = async (ctx) => {
-  if (!isAdmin(ctx.from.id)) return;
-
   try {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfWeek = new Date(startOfToday);
-  startOfWeek.setDate(startOfWeek.getDate() - 7);
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const [
-    userCount,
-    usersToday,
-    usersWeek,
-    usersMonth,
-    merchCount,
-    channelCount,
-    channels,
-    balanceAgg,
-    referralAgg,
-    orderCount,
-    ordersByStatus,
-    revenueAgg,
-    topReferrers,
-  ] = await Promise.all([
-    User.countDocuments(),
-    User.countDocuments({ createdAt: { $gte: startOfToday } }),
-    User.countDocuments({ createdAt: { $gte: startOfWeek } }),
-    User.countDocuments({ createdAt: { $gte: startOfMonth } }),
-    Merch.countDocuments(),
-    Channel.countDocuments(),
-    Channel.find(),
-    User.aggregate([{ $group: { _id: null, total: { $sum: "$balance" } } }]),
-    User.aggregate([
-      { $group: { _id: null, total: { $sum: { $size: { $ifNull: ["$referrals", []] } } } } },
-    ]),
-    Order.countDocuments(),
-    Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
-    Order.aggregate([
-      { $match: { status: "completed" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]),
-    User.aggregate([
-      { $project: { firstName: 1, username: 1, refCount: { $size: { $ifNull: ["$referrals", []] } } } },
-      { $match: { refCount: { $gt: 0 } } },
-      { $sort: { refCount: -1 } },
-      { $limit: 5 },
-    ]),
-  ]);
-
-  const totalBalance = balanceAgg[0]?.total || 0;
-  const totalReferrals = referralAgg[0]?.total || 0;
-  const totalRevenue = revenueAgg[0]?.total || 0;
-
-  const statusMap = ordersByStatus.reduce((acc, s) => {
-    acc[s._id] = s.count;
-    return acc;
-  }, {});
-
-  const channelList = channels.length
-    ? channels.map((c) => `  • ${c.title || c.username} (${c.username})`).join("\n")
-    : "  • Yo'q";
-
-  const topList = topReferrers.length
-    ? topReferrers
-        .map((u, i) => `  ${i + 1}. ${u.firstName || "?"} (@${u.username || "yo'q"}) — ${u.refCount} ta`)
-        .join("\n")
-    : "  • Hali yo'q";
-
-  await ctx.reply(
-    `📊 STATISTIKA\n` +
-    `━━━━━━━━━━━━━━━━━\n\n` +
-    `👥 FOYDALANUVCHILAR\n` +
-    `  • Jami: ${userCount}\n` +
-    `  • Bugun: +${usersToday}\n` +
-    `  • 7 kunda: +${usersWeek}\n` +
-    `  • Bu oyda: +${usersMonth}\n\n` +
-    `💰 MOLIYA\n` +
-    `  • Umumiy balans: ${totalBalance.toLocaleString()} so'm\n` +
-    `  • Tushum (yakunlangan): ${totalRevenue.toLocaleString()} so'm\n\n` +
-    `👥 REFERAL\n` +
-    `  • Jami takliflar: ${totalReferrals} ta\n\n` +
-    `📦 BUYURTMALAR: ${orderCount}\n` +
-    `  • ⏳ Kutilmoqda: ${statusMap.pending || 0}\n` +
-    `  • 🔄 Jarayonda: ${statusMap.processing || 0}\n` +
-    `  • ✅ Yakunlangan: ${statusMap.completed || 0}\n` +
-    `  • ❌ Bekor: ${statusMap.cancelled || 0}\n\n` +
-    `🏆 TOP REFERALLAR\n${topList}\n\n` +
-    `👕 Merch: ${merchCount} ta\n` +
-    `📢 Kanallar: ${channelCount} ta\n${channelList}`,
-    adminMenu
-  );
+    await ctx.reply(...(await buildChannelsListMessage()));
   } catch (err) {
-    console.error("Statistika xatosi:", err.message);
-    await ctx.reply("⚠️ Statistikani yuklashda xato yuz berdi.", adminMenu);
+    console.error("adminChannelsHandler:", err.message);
+    await ctx.reply(`⚠️ Kanallar paneli ochilmadi: ${err.message}`);
   }
 };
 
-const buildForceSubMessage = async () => {
-  const enabled = await getForceSubEnabled();
+const buildChannelsListMessage = async () => {
   const channels = await Channel.find().sort({ createdAt: 1 });
-  const status = enabled ? "✅ <b>YOQILGAN</b>" : "❌ <b>O'CHIRILGAN</b>";
 
   const list = channels.length
     ? channels
@@ -181,29 +73,22 @@ const buildForceSubMessage = async () => {
         .join("\n")
     : "<i>Hali kanal yo'q</i>";
 
-  const buttons = [
-    enabled
-      ? [dangerCb("🚫 Obunani o'chirish", "force_sub_off")]
-      : [successCb("✅ Obunani yoqish", "force_sub_on")],
-    [successCb("➕ Kanal qo'shish", "force_ch_add")],
-  ];
+  const buttons = [[successCb("➕ Kanal qo'shish", "adm_ch_add")]];
 
   for (const ch of channels) {
     const id = String(ch._id);
-    const label = (ch.title || ch.username).slice(0, 22);
-    buttons.push([
-      primaryCb(`✏️ ${label}`, `force_ch_edit_${id}`),
-      dangerCb("🗑", `force_ch_del_${id}`),
-    ]);
+    const label = (ch.title || ch.username).slice(0, 35);
+    buttons.push([primaryCb(`📢 ${label}`, `adm_ch_sel_${id}`)]);
   }
 
-  buttons.push([primaryCb("🔄 Yangilash", "force_sub_status")]);
+  buttons.push([primaryCb("🔄 Yangilash", "adm_ch_list")]);
 
   return [
-    `🔒 <b>Majburiy obuna</b>\n\n` +
-      `Holat: ${status}\n\n` +
-      `📢 <b>Kanallar (${channels.length}):</b>\n${list}\n\n` +
-      `✏️ tahrirlash · 🗑 o'chirish · ➕ qo'shish`,
+    `📢 <b>Kanallar</b>\n\n` +
+      `Bu yerda qo'shilgan kanallar majburiy obuna uchun ishlatiladi.\n` +
+      `Kanalni o'chirsangiz — majburiy obunadan ham chiqadi.\n\n` +
+      `<b>Ro'yxat (${channels.length}):</b>\n${list}\n\n` +
+      `👉 Tahrirlash/o'chirish uchun avval kanalni tanlang.`,
     {
       parse_mode: "HTML",
       reply_markup: { inline_keyboard: buttons },
@@ -211,80 +96,209 @@ const buildForceSubMessage = async () => {
   ];
 };
 
-export const adminForceSubHandler = async (ctx) => {
-  if (!isAdmin(ctx.from.id)) return;
-  try {
-    await ctx.reply(...(await buildForceSubMessage()));
-  } catch (err) {
-    console.error("adminForceSubHandler:", err.message);
-    await ctx.reply(`⚠️ Majburiy obuna paneli ochilmadi: ${err.message}`);
-  }
+const buildChannelDetailMessage = async (channelId) => {
+  const ch = await Channel.findById(channelId);
+  if (!ch) return null;
+
+  const url = ch.username
+    ? `https://t.me/${String(ch.username).replace("@", "")}`
+    : ch.inviteLink || "—";
+
+  return [
+    `📢 <b>Kanal tanlandi</b>\n\n` +
+      `📛 Nom: <b>${esc(ch.title || ch.username)}</b>\n` +
+      `🔗 Username: <code>${esc(ch.username)}</code>\n` +
+      `🌐 URL: ${esc(url)}\n` +
+      `🆔 chatId: <code>${esc(ch.chatId || "—")}</code>\n\n` +
+      `Quyidagilardan birini tanlang:`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [primaryCb("✏️ Tahrirlash", `adm_ch_edit_${ch._id}`)],
+          [dangerCb("🗑 O'chirish", `adm_ch_del_${ch._id}`)],
+          [primaryCb("⬅️ Ro'yxatga qaytish", "adm_ch_list")],
+        ],
+      },
+    },
+  ];
 };
 
-export const handleForceSubActions = async (ctx) => {
+export const handleAdminChannelActions = async (ctx) => {
   if (!isAdmin(ctx.from.id)) {
     return ctx.answerCbQuery("⛔ Faqat admin", { show_alert: true });
   }
 
   const data = ctx.callbackQuery.data;
 
-  if (data === "force_sub_on") {
-    await setForceSubEnabled(true);
-    await ctx.answerCbQuery("Yoqildi");
-    return ctx.editMessageText(...(await buildForceSubMessage()));
+  if (data === "adm_ch_list") {
+    await ctx.answerCbQuery();
+    return ctx.editMessageText(...(await buildChannelsListMessage()));
   }
 
-  if (data === "force_sub_off") {
-    await setForceSubEnabled(false);
-    await ctx.answerCbQuery("O'chirildi");
-    return ctx.editMessageText(...(await buildForceSubMessage()));
-  }
-
-  if (data === "force_sub_status") {
-    await ctx.answerCbQuery("Yangilandi");
-    return ctx.editMessageText(...(await buildForceSubMessage()));
-  }
-
-  if (data === "force_ch_add") {
+  if (data === "adm_ch_add") {
     await ctx.answerCbQuery();
     setState(ctx.from.id, { step: "channel_username" });
     await ctx.reply(
-      "➕ *Yangi kanal*\n\n" +
-        "Yuboring: `@kanal` yoki `https://t.me/kanal`\n\n" +
-        "⚠️ Bot kanalda admin bo'lishi shart!",
-      { parse_mode: "Markdown", ...adminCancelKeyboard }
+      "➕ <b>Yangi kanal</b>\n\n" +
+        "Yuboring:\n" +
+        "• <code>@kanal</code>\n" +
+        "• <code>https://t.me/kanal</code>\n\n" +
+        "⚠️ Bot kanalda <b>admin</b> bo'lishi shart!\n" +
+        "Qo'shilgan kanal majburiy obunaga avtomatik qo'shiladi.",
+      { parse_mode: "HTML", ...adminCancelKeyboard }
     );
     return;
   }
 
-  if (data.startsWith("force_ch_del_")) {
-    const id = data.replace("force_ch_del_", "");
-    const removed = await Channel.findByIdAndDelete(id);
-    await ctx.answerCbQuery(
-      removed ? `O'chirildi: ${removed.username}` : "Topilmadi",
-      { show_alert: true }
-    );
-    return ctx.editMessageText(...(await buildForceSubMessage()));
+  if (data.startsWith("adm_ch_sel_")) {
+    const id = data.replace("adm_ch_sel_", "");
+    const detail = await buildChannelDetailMessage(id);
+    if (!detail) {
+      await ctx.answerCbQuery("Kanal topilmadi", { show_alert: true });
+      return ctx.editMessageText(...(await buildChannelsListMessage()));
+    }
+    await ctx.answerCbQuery("Kanal tanlandi");
+    return ctx.editMessageText(...detail);
   }
 
-  if (data.startsWith("force_ch_edit_")) {
-    const id = data.replace("force_ch_edit_", "");
+  if (data.startsWith("adm_ch_del_")) {
+    const id = data.replace("adm_ch_del_", "");
+    const removed = await Channel.findByIdAndDelete(id);
+    await ctx.answerCbQuery(
+      removed
+        ? `O'chirildi va majburiy obunadan olindi: ${removed.username}`
+        : "Topilmadi",
+      { show_alert: true }
+    );
+    return ctx.editMessageText(...(await buildChannelsListMessage()));
+  }
+
+  if (data.startsWith("adm_ch_edit_")) {
+    const id = data.replace("adm_ch_edit_", "");
     const channel = await Channel.findById(id);
     if (!channel) {
       await ctx.answerCbQuery("Kanal topilmadi", { show_alert: true });
-      return ctx.editMessageText(...(await buildForceSubMessage()));
+      return ctx.editMessageText(...(await buildChannelsListMessage()));
     }
 
     await ctx.answerCbQuery();
     setState(ctx.from.id, { step: "channel_edit", channelId: id });
     await ctx.reply(
-      `✏️ *Kanalni tahrirlash*\n\n` +
-        `Hozirgi: \`${channel.username}\`\n` +
-        `Nom: ${channel.title || "—"}\n\n` +
-        `Yangi kanalni yuboring: \`@kanal\` yoki link\n` +
+      `✏️ <b>Kanalni tahrirlash</b>\n\n` +
+        `Hozirgi: <code>${esc(channel.username)}</code>\n` +
+        `Nom: ${esc(channel.title || "—")}\n\n` +
+        `Yangi <b>@username</b> yoki <b>https://t.me/...</b> link yuboring.\n` +
         `⚠️ Bot yangi kanalda ham admin bo'lishi kerak!`,
-      { parse_mode: "Markdown", ...adminCancelKeyboard }
+      { parse_mode: "HTML", ...adminCancelKeyboard }
     );
+  }
+};
+
+export const adminStatsHandler = async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+
+  try {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - 7);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      userCount,
+      usersToday,
+      usersWeek,
+      usersMonth,
+      merchCount,
+      channelCount,
+      channels,
+      balanceAgg,
+      referralAgg,
+      orderCount,
+      ordersByStatus,
+      revenueAgg,
+      topReferrers,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ createdAt: { $gte: startOfToday } }),
+      User.countDocuments({ createdAt: { $gte: startOfWeek } }),
+      User.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      Merch.countDocuments(),
+      Channel.countDocuments(),
+      Channel.find(),
+      User.aggregate([{ $group: { _id: null, total: { $sum: "$balance" } } }]),
+      User.aggregate([
+        { $group: { _id: null, total: { $sum: { $size: { $ifNull: ["$referrals", []] } } } } },
+      ]),
+      Order.countDocuments(),
+      Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+      Order.aggregate([
+        { $match: { status: "completed" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      User.aggregate([
+        {
+          $project: {
+            firstName: 1,
+            username: 1,
+            refCount: { $size: { $ifNull: ["$referrals", []] } },
+          },
+        },
+        { $match: { refCount: { $gt: 0 } } },
+        { $sort: { refCount: -1 } },
+        { $limit: 5 },
+      ]),
+    ]);
+
+    const totalBalance = balanceAgg[0]?.total || 0;
+    const totalReferrals = referralAgg[0]?.total || 0;
+    const totalRevenue = revenueAgg[0]?.total || 0;
+
+    const statusMap = ordersByStatus.reduce((acc, s) => {
+      acc[s._id] = s.count;
+      return acc;
+    }, {});
+
+    const channelList = channels.length
+      ? channels.map((c) => `  • ${c.title || c.username} (${c.username})`).join("\n")
+      : "  • Yo'q";
+
+    const topList = topReferrers.length
+      ? topReferrers
+          .map(
+            (u, i) =>
+              `  ${i + 1}. ${u.firstName || "?"} (@${u.username || "yo'q"}) — ${u.refCount} ta`
+          )
+          .join("\n")
+      : "  • Hali yo'q";
+
+    await ctx.reply(
+      `📊 STATISTIKA\n` +
+        `━━━━━━━━━━━━━━━━━\n\n` +
+        `👥 FOYDALANUVCHILAR\n` +
+        `  • Jami: ${userCount}\n` +
+        `  • Bugun: +${usersToday}\n` +
+        `  • 7 kunda: +${usersWeek}\n` +
+        `  • Bu oyda: +${usersMonth}\n\n` +
+        `💰 MOLIYA\n` +
+        `  • Umumiy balans: ${totalBalance.toLocaleString()} so'm\n` +
+        `  • Tushum (yakunlangan): ${totalRevenue.toLocaleString()} so'm\n\n` +
+        `👥 REFERAL\n` +
+        `  • Jami takliflar: ${totalReferrals} ta\n\n` +
+        `📦 BUYURTMALAR: ${orderCount}\n` +
+        `  • ⏳ Kutilmoqda: ${statusMap.pending || 0}\n` +
+        `  • 🔄 Jarayonda: ${statusMap.processing || 0}\n` +
+        `  • ✅ Yakunlangan: ${statusMap.completed || 0}\n` +
+        `  • ❌ Bekor: ${statusMap.cancelled || 0}\n\n` +
+        `🏆 TOP REFERALLAR\n${topList}\n\n` +
+        `👕 Merch: ${merchCount} ta\n` +
+        `📢 Kanallar: ${channelCount} ta\n${channelList}`,
+      adminMenu
+    );
+  } catch (err) {
+    console.error("Statistika xatosi:", err.message);
+    await ctx.reply("⚠️ Statistikani yuklashda xato yuz berdi.", adminMenu);
   }
 };
 
@@ -428,7 +442,8 @@ export const handleAdminTextInput = async (ctx) => {
         await ctx.reply(
           `✅ Kanal yangilandi!\n\n` +
             `📢 ${channelData.title}\n` +
-            `🔗 ${channelData.username}`,
+            `🔗 ${channelData.username}\n\n` +
+            `Majburiy obuna ham shu kanalga yangilandi.`,
           adminMenu
         );
       } else {
@@ -438,7 +453,7 @@ export const handleAdminTextInput = async (ctx) => {
           `✅ Kanal qo'shildi!\n\n` +
             `📢 ${channelData.title}\n` +
             `🔗 ${channelData.username}\n\n` +
-            `Endi foydalanuvchilar obuna bo'lmaguncha bot ishlamaydi.`,
+            `Majburiy obunaga avtomatik qo'shildi.`,
           adminMenu
         );
       }

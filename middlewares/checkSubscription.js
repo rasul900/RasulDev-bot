@@ -1,21 +1,7 @@
 import { Markup } from "telegraf";
 import Channel from "../models/Channel.js";
-import Setting from "../models/Setting.js";
+import { isAdmin } from "../config/admin.js";
 import { primaryUrl, successCb } from "../keyboards/styledButton.js";
-
-export const getForceSubEnabled = async () => {
-  const setting = await Setting.findOne().lean();
-  return setting?.forceSubEnabled !== false;
-};
-
-export const setForceSubEnabled = async (enabled) => {
-  let setting = await Setting.findOne();
-  if (!setting) setting = new Setting();
-  setting.forceSubEnabled = enabled;
-  setting.updatedAt = new Date();
-  await setting.save();
-  return setting.forceSubEnabled;
-};
 
 export const normalizeChannelUsername = (input) => {
   const trimmed = input.trim();
@@ -73,7 +59,6 @@ export const getSubscriptionStatus = async (telegram, userId) => {
       }
     } catch (err) {
       const msg = err.message || "";
-      // Bot kanalda emas / username noto'g'ri — userni bloklamaymiz
       if (/chat not found|bot is not a member|CHANNEL_INVALID/i.test(msg)) {
         console.error(
           `Majburiy obuna: kanal o'tkazib yuborildi (${channel.username}): ${msg}`
@@ -86,9 +71,7 @@ export const getSubscriptionStatus = async (telegram, userId) => {
     }
   }
 
-  // Hech qanday ishlaydigan kanal bo'lmasa — to'smaymiz
   if (!active.length) return { ok: true, missing: [] };
-
   return { ok: missing.length === 0, missing };
 };
 
@@ -138,23 +121,21 @@ const sendForceSubPrompt = async (ctx, missing) => {
 
 export const checkSubscription = async (ctx, next) => {
   if (ctx.chat?.type !== "private") return next();
+  if (isAdmin(ctx.from.id)) return next();
   if (ctx.callbackQuery?.data === "check_sub") return next();
 
-  // Admin panel tugmalari / buyruqlari o'tsin
   const text = ctx.message?.text || "";
   if (
-    ctx.message?.text?.startsWith("/admin") ||
-    /Majburiy obuna|Merch qo'shish|Kanal qo'shish|Statistika|Reklama|Bekor qilish|Asosiy menu/i.test(
+    text.startsWith("/admin") ||
+    /Kanallar|Merch qo'shish|Statistika|Reklama|Bekor qilish|Asosiy menu/i.test(
       text
     ) ||
-    ctx.callbackQuery?.data?.startsWith("force_")
+    ctx.callbackQuery?.data?.startsWith("adm_ch_")
   ) {
     return next();
   }
 
   try {
-    if (!(await getForceSubEnabled())) return next();
-
     const { ok, missing } = await getSubscriptionStatus(
       ctx.telegram,
       ctx.from.id
@@ -171,15 +152,6 @@ export const checkSubscription = async (ctx, next) => {
 
 export const recheckSubscription = async (ctx) => {
   try {
-    if (!(await getForceSubEnabled())) {
-      await ctx.answerCbQuery("✅ Majburiy obuna o'chirilgan");
-      await ctx.deleteMessage().catch(() => {});
-      await ctx.reply(
-        "✅ Endi botdan foydalanishingiz mumkin.\n\n📌 /start buyrug'ini yuboring."
-      );
-      return;
-    }
-
     const { ok, missing } = await getSubscriptionStatus(
       ctx.telegram,
       ctx.from.id

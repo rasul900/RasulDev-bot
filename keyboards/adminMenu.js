@@ -2,9 +2,8 @@ import { Markup } from "telegraf";
 import { successBtn, primaryBtn, dangerBtn } from "./styledButton.js";
 
 export const adminMenu = Markup.keyboard([
-  [successBtn("🟢 Merch qo'shish"), successBtn("🔵 Kanal qo'shish")],
+  [successBtn("🟢 Merch qo'shish"), successBtn("📢 Kanallar")],
   [primaryBtn("🟡 Statistika"), primaryBtn("🟣 Reklama yuborish")],
-  [primaryBtn("🔒 Majburiy obuna")],
   [dangerBtn("❌ Bekor qilish"), primaryBtn("🔙 Asosiy menu")],
 ]).resize();
 
