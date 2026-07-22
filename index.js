@@ -46,7 +46,6 @@ import {
 
 import { sendShopMenu } from "./keyboards/MerchMenu.js";
 import { sendMainMenu } from "./keyboards/mainMenu.js";
-import { wrapMaintenance } from "./config/shopMaintenance.js";
 import {
   merchShopHandler,
   handleMerchProduct,
@@ -71,36 +70,6 @@ import {
 } from "./handlers/shop/smmShop.js";
 import { checkSubscription, recheckSubscription } from "./middlewares/checkSubscription.js";
 
-import {
-  StarsShop,
-  handleBuyStars,
-  handleForSelf,
-  handleForOther,
-  handleUserIdInput,
-  handleCustomAmount,
-  handleConfirmStars,
-  handleStarsBack,
-} from "./handlers/Stars.js";
-
-import {
-  PremiumShop,
-  handleBuyPremium,
-  handlePremiumForSelf,
-  handlePremiumForOther,
-  handlePremiumUserIdInput,
-  handleConfirmPremium,
-  handlePremiumBack,
-} from "./handlers/Premiumm.js";
-
-import {
-  ucHandler,
-  handleUcPackage,
-  handlePubgIdInput,
-  handleUcConfirm,
-  handleUcCancel,
-} from "./handlers/shop/uc.js";
-
-import { initFragment, isFragmentConfigured } from "./services/fragment.js";
 import { saveTelegramPhoto } from "./services/fileStorage.js";
 import { startPaymentWebhookServer } from "./services/paymentWebhook.js";
 import { startPaymentPoller } from "./services/paymentService.js";
@@ -112,15 +81,6 @@ import { handleAdminSmsForward } from "./handlers/smsPayment.js";
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 connectDB();
-
-if (isFragmentConfigured()) {
-  initFragment().then((res) => {
-    if (res.ok) console.log("Fragment API ulandi");
-    else console.warn("Fragment init:", res.reason, res.error || "");
-  });
-} else {
-  console.log("Fragment sozlanmagan — Stars/Premium qo'lda yetkaziladi");
-}
 
 if (isMulticardConfigured()) {
   startPaymentPoller(bot.telegram);
@@ -163,9 +123,6 @@ bot.action("nav_about", fromNav(aboutHandler));
 bot.action("nav_balance", fromNav(balansHandler));
 bot.action("nav_main", fromNav(async (ctx) => sendMainMenu(ctx, "🏠 *Asosiy menu*", { parse_mode: "Markdown" })));
 bot.action("nav_merch", fromNav(merchShopHandler));
-bot.action("nav_uc", fromNav(wrapMaintenance("uc", "🎮 PUBG UC", ucHandler)));
-bot.action("nav_stars", fromNav(wrapMaintenance("stars", "⭐ Telegram Stars", StarsShop)));
-bot.action("nav_premium", fromNav(wrapMaintenance("premium", "👑 Telegram Premium", PremiumShop)));
 bot.action("nav_ref", fromNav(pulIshlashHandler));
 bot.action("nav_topup", fromNav(topUpHandler));
 
@@ -181,9 +138,6 @@ bot.hears(["💰 Balansni to'ldirish", "🟡 Balansni to'ldirish"], topUpHandler
 bot.hears(["👕 MERCH", "🔴 MERCH"], merchShopHandler);
 bot.hears(["📱 SMM Xizmatlar", "🟢 SMM Xizmatlar"], smmShopHandler);
 bot.hears(["💳 To'lov usullari", "🟢 To'lov usullari"], payServicesHandler);
-bot.hears(["⭐ Stars", "🟡 Stars"], wrapMaintenance("stars", "⭐ Telegram Stars", StarsShop));
-bot.hears(["👑 Premium", "🟢 Premium"], wrapMaintenance("premium", "👑 Telegram Premium", PremiumShop));
-bot.hears(["🎮 PUBG UC", "🟠 PUBG UC"], wrapMaintenance("uc", "🎮 PUBG UC", ucHandler));
 
 // ── ORQAGA ────────────────────────────────────
 const goBackToMain = async (ctx) => {
@@ -194,25 +148,6 @@ bot.hears(["⬅️ Orqaga", "🔙 Orqaga", "🔵 Orqaga"], goBackToMain);
 // ── HAMKORLIK CALLBACKLARI ────────────────────
 bot.action(/^partner_(?!back)/, partnershipCallbackHandler);
 bot.action("partner_back", partnershipBackHandler);
-
-// ── STARS CALLBACKLARI ────────────────────────
-bot.action(/^buy_stars_\d+$/, handleBuyStars);
-bot.action(/^self_\d+$/, handleForSelf);
-bot.action(/^other_\d+$/, handleForOther);
-bot.action("confirm_stars", handleConfirmStars);
-bot.action("stars_shop", handleStarsBack);
-
-// ── PREMIUM CALLBACKLARI ──────────────────────
-bot.action(/^buy_premium_\d+$/, handleBuyPremium);
-bot.action(/^pself_\d+$/, handlePremiumForSelf);
-bot.action(/^pother_\d+$/, handlePremiumForOther);
-bot.action("confirm_premium", handleConfirmPremium);
-bot.action("premium_shop", handlePremiumBack);
-
-// ── UC (PUBG) CALLBACKLARI ────────────────────
-bot.action(/^uc_(60|325|660|1800|3850|8100)$/, handleUcPackage);
-bot.action("uc_confirm", handleUcConfirm);
-bot.action("uc_cancel", handleUcCancel);
 
 // ── BALANS CALLBACKLARI ───────────────────────
 bot.action("ref_stats", refStatsCallback);
@@ -285,13 +220,6 @@ bot.on("text", async (ctx, next) => {
   if (ctx.session?.awaitingTopUpAmount) return handleTopUpAmountInput(ctx);
   if (await handleSmmLinkInput(ctx)) return;
   if (await handleSmmQtyInput(ctx)) return;
-  if (ctx.session?.awaitingUserId) return handleUserIdInput(ctx);
-  if (ctx.session?.awaitingPremiumUserId) return handlePremiumUserIdInput(ctx);
-  if (ctx.session?.awaitingPubgId) return handlePubgIdInput(ctx);
-
-  if (/^\d+$/.test(ctx.message?.text?.trim()) && !ctx.session?.awaitingSmmQty) {
-    return handleCustomAmount(ctx);
-  }
 
   return next();
 });
