@@ -1,14 +1,14 @@
-/** Vaqtincha o'chirilgan do'kon bo'limlari (true = tamirlanmoqda) */
+/** Vaqtincha o'chirilgan do'kon bo'limlari (true = tahrirlanmoqda) */
 export const SHOP_MAINTENANCE = {
-  stars: false,
-  premium: false,
-  uc: false,
+  stars: true,
+  premium: true,
+  uc: true,
 };
 
 export const maintenanceMessage = (sectionName) =>
   `🔧 *${sectionName}*\n\n` +
-  `⚠️ Ushbu bo'lim hozircha *tamirlanmoqda*.\n` +
-  `Tez orada qayta ochiladi. Iltimos, biroz kuting.`;
+  `✏️ Ushbu bo'lim hozir *tahrirlanmoqda*.\n` +
+  `Tez orada yangilanib qayta ochiladi. Iltimos, biroz kuting.`;
 
 export const wrapMaintenance = (sectionKey, sectionName, handler) => async (ctx) => {
   if (SHOP_MAINTENANCE[sectionKey]) {
